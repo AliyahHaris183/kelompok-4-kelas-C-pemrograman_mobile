@@ -1,6 +1,6 @@
-# kelompok-x-kelas-C-pemrograman_mobile
+# kelompok-4-kelas-C-pemrograman_mobile
 
 No. (NIM) Nama
 1. (D121241080) Andi Nurul Aliyah Haris
-2. ()
-3. ()
+2. (D121241085) Andi Suci Khairunnisa 
+3. (D121241104) Anisah Raihanah Amar
