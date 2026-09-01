@@ -1,0 +1,104 @@
+// ============================================================
+// SIMPLE SHOPPING CART
+// Tugas: Independent Practice
+// Jalankan dengan: dart run shopping_cart.dart
+// ============================================================
+
+import 'dart:io';
+
+// Class Product untuk menyimpan data tiap produk
+class Product {
+  String name;
+  double price;
+  int qty;
+
+  Product(this.name, this.price, this.qty);
+
+  // Function untuk menghitung subtotal per produk
+  double subtotal() {
+    return price * qty;
+  }
+}
+
+// Function untuk menentukan diskon berdasarkan total belanja
+double calculateDiscount(double total) {
+  double discount = 0;
+
+  if (total >= 500000) {
+    discount = total * 0.20; // diskon 20%
+  } else if (total >= 200000) {
+    discount = total * 0.10; // diskon 10%
+  } else if (total >= 100000) {
+    discount = total * 0.05; // diskon 5%
+  } else {
+    discount = 0;
+  }
+
+  return discount;
+}
+
+// Function untuk format angka jadi format rupiah sederhana
+String formatRupiah(double value) {
+  return "Rp${value.toStringAsFixed(0)}";
+}
+
+void main() {
+  // ---------------------------------------------------------
+  // 1. Data produk dalam keranjang (bisa diganti sesuai kebutuhan)
+  // ---------------------------------------------------------
+  List<Product> cart = [
+    Product("Kaos Polos", 75000, 2),
+    Product("Celana Jeans", 150000, 1),
+    Product("Topi", 40000, 3),
+    Product("Sepatu Sneakers", 250000, 1),
+  ];
+
+  double subtotalAll = 0;
+
+  print("=== SIMPLE SHOPPING CART ===\n");
+  print("Daftar Produk:");
+  print("-----------------------------------------------------------");
+  print("${"Nama Produk".padRight(18)}${"Harga".padRight(12)}Qty  Subtotal");
+  print("-----------------------------------------------------------");
+
+  // ---------------------------------------------------------
+  // 2. Loop untuk menampilkan setiap produk & menjumlahkan subtotal
+  // ---------------------------------------------------------
+  for (int i = 0; i < cart.length; i++) {
+    Product p = cart[i];
+    double sub = p.subtotal();
+    subtotalAll += sub;
+
+    print(
+      "${p.name.padRight(18)}"
+      "${formatRupiah(p.price).padRight(12)}"
+      "${p.qty.toString().padRight(5)}"
+      "${formatRupiah(sub)}",
+    );
+  }
+
+  print("-----------------------------------------------------------");
+  print("Subtotal            : ${formatRupiah(subtotalAll)}");
+
+  // ---------------------------------------------------------
+  // 3. Hitung diskon
+  // ---------------------------------------------------------
+  double discount = calculateDiscount(subtotalAll);
+  if (discount > 0) {
+    print("Diskon              : ${formatRupiah(discount)}");
+  } else {
+    print("Diskon              : Tidak ada diskon");
+  }
+
+  // ---------------------------------------------------------
+  // 4. Hitung total akhir
+  // ---------------------------------------------------------
+  double total = subtotalAll - discount;
+  print("Total Pembayaran    : ${formatRupiah(total)}");
+
+  print("\n=== Terima kasih telah berbelanja! ===");
+
+  // Tahan konsol biar tidak langsung tertutup saat dijalankan lewat Run
+  stdout.write("\nTekan Enter untuk keluar...");
+  stdin.readLineSync();
+}
