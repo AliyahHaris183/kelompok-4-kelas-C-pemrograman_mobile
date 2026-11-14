@@ -27,26 +27,6 @@ Scaffold ini dibuat tanpa Flutter SDK, jadi `flutter pub get`, `flutter analyze`
 dan `flutter test` **belum pernah dijalankan** pada kode ini. Jalankan langkah di
 bawah dan perbaiki bila ada temuan.
 
-## Menjalankan proyek (pertama kali)
-
-Folder platform (`android/`, `ios/`, dst.) belum ada. Dari dalam folder ini:
-
-```bash
-flutter create --project-name catlendar --platforms=android,ios .
-git status        # pastikan file di lib/, test/, pubspec.yaml tidak tertimpa
-flutter pub get
-flutter analyze
-flutter test
-```
-
-Lalu siapkan Firebase: lihat [docs/firebase_setup.md](docs/firebase_setup.md).
-
-```bash
-flutter run --dart-define=THE_CAT_API_KEY=isi_api_key_anda
-```
-
-Tanpa konfigurasi Firebase, aplikasi tetap terbuka dengan banner peringatan, dan
-semua layar placeholder bisa dibuka lewat **Dev Menu** (rute awal `/dev`).
 
 ## Dokumentasi
 
