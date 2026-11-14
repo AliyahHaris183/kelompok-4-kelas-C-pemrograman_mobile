@@ -1,61 +1,152 @@
 # Pengujian Firestore Security Rules
 
-**Status: aturan belum diuji.** Tabel hasil di bawah sengaja kosong. Isi hanya
-setelah pengujian benar-benar dijalankan.
+File aturan: `firestore.rules` di root proyek.
 
-## Ringkasan aturan (`firestore.rules`)
+Aturan hanya boleh dianggap teruji setelah semua skenario di bawah dijalankan
+dan hasilnya dicatat. Ganti setiap `(isi)` dengan hasil sebenarnya. Jangan
+mengisi hasil yang belum diuji.
 
-| Koleksi | Baca | Tulis | Hapus |
-|---|---|---|---|
-| USERS | Pemilik (uid = ID dokumen) | Pemilik | Tidak ada |
-| CATS | Pemilik (`owner_id`) | Pemilik; `owner_id` harus uid sendiri | Pemilik |
-| MEDICAL_HISTORY | Pemilik (`owner_id`) | Pemilik; `owner_id` harus uid sendiri | Pemilik |
-| CARE_RECORD | Pemilik (`owner_id`) | Create saja, tanpa update | Tidak ada |
-| SCHEDULE | Pemilik (`owner_id`) | Pemilik; `owner_id` harus uid sendiri | Pemilik |
-| Lainnya | Tidak ada | Tidak ada | Tidak ada |
+## Ringkasan aturan
 
-## Cara menjalankan emulator
+USERS:
 
-```bash
+- Baca dan tulis: hanya pemilik (uid sama dengan ID dokumen)
+- Hapus: tidak ada yang boleh
+
+CATS, MEDICAL_HISTORY, SCHEDULE:
+
+- Baca dan hapus: hanya pemilik (`owner_id` sama dengan uid)
+- Buat: `owner_id` harus uid sendiri
+- Ubah: pemilik, dan `owner_id` tidak boleh diubah ke uid lain
+
+CARE_RECORD (log):
+
+- Baca: hanya pemilik
+- Buat: `owner_id` harus uid sendiri
+- Ubah dan hapus: tidak ada yang boleh
+
+Koleksi lain: semua akses ditolak.
+
+## Cara menguji
+
+### Opsi 1: Rules Playground (tanpa kode)
+
+1. Buka Firebase Console, Firestore Database, tab Rules, lalu Rules Playground.
+2. Siapkan data uji lewat tab Data (cara ini melewati rules, jadi aman):
+   - `CATS/cat-a` dengan field `owner_id` bernilai `uid-A`
+   - `CATS/cat-b` dengan field `owner_id` bernilai `uid-B`
+   - `CARE_RECORD/cr-a` dengan field `owner_id` bernilai `uid-A`
+3. Jalankan tiap skenario di bawah. Atur Simulation type, Location, dan
+   Authenticated sesuai skenario.
+4. Setelah selesai, hapus ketiga dokumen uji.
+
+Playground hanya menguji aturan, bukan query dari aplikasi.
+
+### Opsi 2: Emulator
+
+```powershell
 npm install -g firebase-tools
 firebase emulators:start --only firestore,auth --project demo-catlendar
 ```
 
-Emulator UI: http://localhost:4000. Nama proyek berawalan `demo-` membuat
-emulator berjalan tanpa proyek Firebase sungguhan.
+Emulator UI ada di http://localhost:4000. Nama proyek berawalan `demo-`
+membuat emulator berjalan tanpa proyek Firebase sungguhan.
 
-Skenario dapat dijalankan manual lewat Emulator UI, atau otomatis dengan
-`@firebase/rules-unit-testing` (belum dibuat di repository ini).
+## Skenario wajib
 
-## Skenario uji
+Pengguna A memakai uid `uid-A`. Pengguna B memakai uid `uid-B`.
 
-Siapkan dua pengguna: **A** dan **B**. Data awal: satu dokumen `CATS` milik A
-dan satu milik B; satu dokumen `CARE_RECORD` milik A.
+### 1. A membaca CATS milik A
 
-| # | Skenario | Hasil yang diharapkan | Hasil aktual | 14 November 2026|
-|---|---|---|---|---|
-| 1 | A membaca CATS milik A | Berhasil | belum diuji | |
-| 2 | A membaca CATS milik B | Ditolak | belum diuji | |
-| 3 | A membuat CATS dengan `owner_id` milik B | Ditolak | belum diuji | |
-| 4 | A mengubah `owner_id` CATS miliknya menjadi uid B | Ditolak | belum diuji | |
-| 5 | Pengguna tanpa login membaca data apa pun | Ditolak | belum diuji | |
-| 6 | A membaca USERS milik B | Ditolak | belum diuji | |
-| 7 | A mengubah CARE_RECORD yang sudah ada | Ditolak | belum diuji | |
-| 8 | A menghapus USERS miliknya sendiri | Ditolak | belum diuji | |
+- Simulation: get, path `/CATS/cat-a`, login sebagai A
+- Diharapkan: Allowed
+- Hasil: Allowed
+- Tanggal uji: 14-11-2026
 
-Skenario tambahan yang disarankan:
+### 2. A membaca CATS milik B
 
-| # | Skenario | Hasil yang diharapkan |
-|---|---|---|
-| 9 | A membuat CARE_RECORD dengan `owner_id` A | Berhasil |
-| 10 | A menghapus CARE_RECORD miliknya | Ditolak |
-| 11 | A query CATS dengan `where owner_id == uid A` | Berhasil |
-| 12 | A query CATS tanpa filter `owner_id` | Ditolak (query tidak aman) |
-| 13 | Akses koleksi di luar lima koleksi ERD | Ditolak |
+- Simulation: get, path `/CATS/cat-b`, login sebagai A
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 3. A membuat CATS dengan owner_id milik B
+
+- Simulation: create, path `/CATS/baru`, login sebagai A, data `owner_id` = `uid-B`
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 4. A mengubah owner_id CATS miliknya menjadi uid B
+
+- Simulation: update, path `/CATS/cat-a`, login sebagai A, data `owner_id` = `uid-B`
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 5. Pengguna tanpa login membaca data
+
+- Simulation: get, path `/CATS/cat-a`, tanpa login
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 6. A membaca USERS milik B
+
+- Simulation: get, path `/USERS/uid-B`, login sebagai A
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 7. A mengubah CARE_RECORD yang sudah ada
+
+- Simulation: update, path `/CARE_RECORD/cr-a`, login sebagai A, data `owner_id` = `uid-A`
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+### 8. A menghapus USERS miliknya sendiri
+
+- Simulation: delete, path `/USERS/uid-A`, login sebagai A
+- Diharapkan: Denied
+- Hasil: Denied
+- Tanggal uji: 14-11-2026
+
+## Skenario tambahan (disarankan)
+
+Skenario 9 sampai 11 bisa diuji di Playground. Skenario 12 dan 13 paling mudah
+diuji lewat aplikasi atau emulator.
+
+### 9. A membuat CARE_RECORD dengan owner_id A
+
+- Diharapkan: Allowed
+- Hasil: (isi)
+
+### 10. A menghapus CARE_RECORD miliknya
+
+- Diharapkan: Denied
+- Hasil: (isi)
+
+### 11. A mengubah owner_id SCHEDULE miliknya menjadi uid B
+
+- Diharapkan: Denied
+- Hasil: (isi)
+
+### 12. A menjalankan query CATS tanpa filter owner_id
+
+- Diharapkan: Denied (query tidak aman)
+- Hasil: (isi)
+
+### 13. Akses koleksi di luar lima koleksi ERD
+
+- Diharapkan: Denied
+- Hasil: (isi)
 
 ## Catatan
 
-- Skenario 12 menegaskan aturan penting untuk developer: semua query list wajib
-  memuat filter `owner_id`.
-- Aturan tidak memeriksa kepemilikan `cat_id` pada koleksi anak (lihat
-  `docs/architecture.md`, bagian "Hal penting").
+- Skenario 12 menegaskan aturan penting untuk developer: semua query list
+  wajib memuat filter `owner_id`. Skenario ini baru terbukti penuh setelah
+  fitur Orang 2 dan Orang 3 berjalan.
+- Aturan tidak memeriksa bahwa `cat_id` pada koleksi anak milik pengguna yang
+  sama (lihat `docs/architecture.md`, bagian "Hal penting").
+- Jika `firestore.rules` diubah, deploy ulang dan ulangi semua skenario.
