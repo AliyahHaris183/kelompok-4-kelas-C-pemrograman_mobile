@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "110371440678",
+    "project_id": "catlender-a4a23",
+    "storage_bucket": "catlender-a4a23.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110371440678:android:bab3ee4dd2299a1f2c7ee7",
+        "android_client_info": {
+          "package_name": "com.example.catlendar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5v5Bhy6vfKEFd8CYU_Sf5zTSNXbgC4R8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
