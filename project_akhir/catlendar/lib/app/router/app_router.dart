@@ -25,10 +25,12 @@ import 'package:catlendar/features/care/presentation/screens/grooming_history_sc
 import 'package:catlendar/features/care/presentation/screens/schedule_setup_screen.dart';
 import 'package:catlendar/features/care/presentation/screens/summary_screen.dart';
 import 'package:catlendar/features/cats/presentation/screens/add_cat_screen.dart';
-import 'package:catlendar/features/cats/presentation/screens/cat_profile_screen.dart';
+import 'package:catlendar/features/cats/presentation/screens/cat_profile_screen.dart'
+    as cats_profile;
 import 'package:catlendar/features/cats/presentation/screens/cat_summary_screen.dart';
 import 'package:catlendar/features/cats/presentation/screens/edit_cat_screen.dart';
-import 'package:catlendar/features/cats/presentation/screens/home_screen.dart';
+import 'package:catlendar/features/cats/presentation/screens/home_screen.dart'
+    as cats_home;
 
 /// Satu-satunya konfigurasi routing aplikasi. Fitur TIDAK boleh membuat router
 /// sendiri; tambahkan rute baru di app_routes.dart lalu di sini.
@@ -87,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ---- Cats & Home (Orang 2) ----
       // Urutan penting: /cats/add dan /cats/summary harus sebelum /cats/:catId.
-      _route(AppRoutes.home, (context, state) => const HomeScreen()),
+      _route(AppRoutes.home, (context, state) => const cats_home.HomeScreen()),
       _route(AppRoutes.addCat, (context, state) => const AddCatScreen()),
       _route(
         AppRoutes.catSummary,
@@ -95,7 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       _route(
         AppRoutes.catProfile,
-        (context, state) => CatProfileScreen(
+        (context, state) => cats_profile.CatProfileScreen(
           catId: state.pathParameters[AppRoutes.catIdParam]!,
         ),
       ),
