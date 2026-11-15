@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:catlendar/core/errors/app_exception.dart';
 import 'package:catlendar/features/auth/domain/repositories/auth_repository.dart';
 
-/// Scaffold. Hanya pembungkus tipis yang sudah berfungsi (authStateChanges,
-/// currentUser). Sisanya TODO Orang 1.
+/// Repository Firebase Authentication (email dan password). Milik Orang 1.
+///
+/// Error Firebase (FirebaseAuthException) sengaja tidak dibungkus di sini.
+/// Pemanggil mengubahnya dengan AppException.from(error) untuk pesan pengguna.
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this.auth);
 
@@ -15,48 +18,82 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   User? get currentUser => auth.currentUser;
 
-  // TODO(Orang 1): signInWithEmailAndPassword. Akun belum terverifikasi
-  // diarahkan ke layar Verifikasi email.
   @override
   Future<void> signInWithEmail({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError('TODO(Orang 1): signInWithEmail');
+  }) async {
+    await auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
 
-  // TODO(Orang 1): createUserWithEmailAndPassword lalu sendEmailVerification.
+  /// Email yang sudah terdaftar ditolak Firebase (kode email-already-in-use).
   @override
   Future<void> signUpWithEmail({
     required String email,
     required String password,
-  }) =>
-      throw UnimplementedError('TODO(Orang 1): signUpWithEmail');
+  }) async {
+    final credential = await auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+    await credential.user?.sendEmailVerification();
+  }
 
-  // TODO(Orang 1): currentUser.sendEmailVerification().
   @override
-  Future<void> sendEmailVerification() =>
-      throw UnimplementedError('TODO(Orang 1): sendEmailVerification');
+  Future<void> sendEmailVerification() async {
+    await _requireUser().sendEmailVerification();
+  }
 
-  // TODO(Orang 1): currentUser.reload() lalu baca emailVerified.
   @override
-  Future<bool> reloadAndCheckEmailVerified() =>
-      throw UnimplementedError('TODO(Orang 1): reloadAndCheckEmailVerified');
+  Future<bool> reloadAndCheckEmailVerified() async {
+    await _requireUser().reload();
+    // Ambil ulang currentUser: objek lama bisa menyimpan status lama.
+    return auth.currentUser?.emailVerified ?? false;
+  }
 
-  // TODO(Orang 1): sendPasswordResetEmail.
   @override
-  Future<void> sendPasswordResetEmail(String email) =>
-      throw UnimplementedError('TODO(Orang 1): sendPasswordResetEmail');
+  Future<void> sendPasswordResetEmail(String email) {
+    return auth.sendPasswordResetEmail(email: email.trim());
+  }
 
-  // TODO(Orang 1): reauthenticateWithCredential lalu updatePassword.
   @override
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
-  }) =>
-      throw UnimplementedError('TODO(Orang 1): changePassword');
+  }) async {
+    final user = _requireUser();
+    final email = user.email;
+    if (email == null) {
+      throw const AppException(
+        'Akun ini tidak memiliki email.',
+        type: AppErrorType.auth,
+      );
+    }
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
 
-  // TODO(Orang 1): hapus fcm_token di USERS dulu, baru signOut.
+  // TODO(Orang 1): urutan log out yang benar: hapus fcm_token di USERS DULU
+  // (UserRepository.updateFcmToken dengan null), baru panggil signOut.
+  // Setelah sign out, Security Rules menolak penulisan ke USERS.
   @override
-  Future<void> signOut() =>
-      throw UnimplementedError('TODO(Orang 1): signOut');
+  Future<void> signOut() => auth.signOut();
+
+  User _requireUser() {
+    final user = auth.currentUser;
+    if (user == null) {
+      throw const AppException(
+        'Sesi login tidak ditemukan. Silakan log in ulang.',
+        type: AppErrorType.auth,
+      );
+    }
+    return user;
+  }
 }
