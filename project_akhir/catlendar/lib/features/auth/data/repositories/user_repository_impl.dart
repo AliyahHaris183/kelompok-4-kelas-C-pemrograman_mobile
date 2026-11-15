@@ -2,28 +2,37 @@ import 'package:catlendar/features/auth/data/datasources/user_firestore_data_sou
 import 'package:catlendar/features/auth/data/models/app_user.dart';
 import 'package:catlendar/features/auth/domain/repositories/user_repository.dart';
 
-/// Scaffold. Belum terhubung ke Firestore. Semua TODO Orang 1.
+/// Repository USERS. Milik Orang 1.
+/// getUser, watchUser, dan createUser sudah berfungsi.
 class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl(this.dataSource);
 
   final UserFirestoreDataSource dataSource;
 
-  // TODO(Orang 1): dataSource.doc(userId).get() -> AppUser.fromFirestore.
+  /// Mengembalikan null jika dokumen USERS/{userId} belum ada
+  /// (pengguna belum menyelesaikan onboarding).
   @override
-  Future<AppUser?> getUser(String userId) =>
-      throw UnimplementedError('TODO(Orang 1): getUser');
+  Future<AppUser?> getUser(String userId) async {
+    final snapshot = await dataSource.doc(userId).get();
+    if (!snapshot.exists) return null;
+    return AppUser.fromFirestore(snapshot);
+  }
 
-  // TODO(Orang 1): dataSource.doc(userId).snapshots() -> AppUser.fromFirestore.
   @override
-  Stream<AppUser?> watchUser(String userId) =>
-      throw UnimplementedError('TODO(Orang 1): watchUser');
+  Stream<AppUser?> watchUser(String userId) {
+    return dataSource.doc(userId).snapshots().map<AppUser?>(
+          (snapshot) =>
+              snapshot.exists ? AppUser.fromFirestore(snapshot) : null,
+        );
+  }
 
-  // TODO(Orang 1): set dokumen dengan id = user.userId, data user.toFirestore().
+  /// ID dokumen = user.userId = UID Firebase Auth (wajib, diperiksa Security Rules).
   @override
-  Future<void> createUser(AppUser user) =>
-      throw UnimplementedError('TODO(Orang 1): createUser');
+  Future<void> createUser(AppUser user) {
+    return dataSource.doc(user.userId).set(user.toFirestore());
+  }
 
-  // TODO(Orang 1): update dengan updated_at baru.
+  // TODO(Orang 1): update dengan updated_at baru (edit profil pemilik, layar 22).
   @override
   Future<void> updateUser(AppUser user) =>
       throw UnimplementedError('TODO(Orang 1): updateUser');
