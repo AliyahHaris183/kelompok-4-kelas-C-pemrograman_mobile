@@ -2,14 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:catlendar/core/constants/firestore_collections.dart';
 
-/// Akses mentah ke koleksi MEDICAL_HISTORY. Milik Orang 2.
 class MedicalHistoryFirestoreDataSource {
   MedicalHistoryFirestoreDataSource(this._firestore);
 
   final FirebaseFirestore _firestore;
 
-  CollectionReference<Map<String, dynamic>> get collection =>
+  late final collection =
       _firestore.collection(FirestoreCollections.medicalHistory);
 
+  /// ID baru dibuat lokal, tanpa jaringan.
   String newId() => collection.doc().id;
 }

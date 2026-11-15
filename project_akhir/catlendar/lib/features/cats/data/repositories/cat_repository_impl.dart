@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:catlendar/core/constants/firestore_fields.dart';
 import 'package:catlendar/features/cats/data/datasources/cat_firestore_data_source.dart';
 import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/features/cats/domain/repositories/cat_repository.dart';
 
-/// Scaffold. Hanya newId() yang berfungsi. Sisanya TODO Orang 2.
 class CatRepositoryImpl implements CatRepository {
   CatRepositoryImpl(this.dataSource);
 
@@ -11,28 +13,43 @@ class CatRepositoryImpl implements CatRepository {
   @override
   String newId() => dataSource.newId();
 
-  // TODO(Orang 2): query where owner_id == ownerId, map Cat.fromFirestore.
   @override
-  Stream<List<Cat>> watchCatsByOwner(String ownerId) =>
-      throw UnimplementedError('TODO(Orang 2): watchCatsByOwner');
+  Stream<List<Cat>> watchCatsByOwner(String ownerId) {
+    return dataSource.collection
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => Cat.fromFirestore(doc)).toList(),
+        );
+  }
 
-  // TODO(Orang 2): snapshots() dokumen CATS/{catId}.
   @override
-  Stream<Cat?> watchCat(String catId) =>
-      throw UnimplementedError('TODO(Orang 2): watchCat');
+  Stream<Cat?> watchCat(String catId) {
+    return dataSource.collection.doc(catId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return Cat.fromFirestore(doc);
+    });
+  }
 
-  // TODO(Orang 2): get() dokumen CATS/{catId}.
   @override
-  Future<Cat?> getCat(String catId) =>
-      throw UnimplementedError('TODO(Orang 2): getCat');
+  Future<Cat?> getCat(String catId) async {
+    final doc = await dataSource.collection.doc(catId).get();
+    if (!doc.exists) return null;
+    return Cat.fromFirestore(doc);
+  }
 
-  // TODO(Orang 2): set dokumen id = cat.catId, data cat.toFirestore().
   @override
-  Future<void> createCat(Cat cat) =>
-      throw UnimplementedError('TODO(Orang 2): createCat');
+  Future<void> createCat(Cat cat) async {
+    await dataSource.collection.doc(cat.catId).set(cat.toFirestore());
+  }
 
-  // TODO(Orang 2): update dengan updated_at baru; jangan ubah owner_id.
   @override
-  Future<void> updateCat(Cat cat) =>
-      throw UnimplementedError('TODO(Orang 2): updateCat');
+  Future<void> updateCat(Cat cat) async {
+    final updateData = cat.toFirestore();
+    updateData.remove(FirestoreFields.ownerId);
+    updateData[FirestoreFields.updatedAt] = FieldValue.serverTimestamp();
+
+    await dataSource.collection.doc(cat.catId).update(updateData);
+  }
 }

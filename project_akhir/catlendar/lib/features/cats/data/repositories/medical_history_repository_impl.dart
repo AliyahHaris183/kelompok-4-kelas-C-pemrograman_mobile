@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:catlendar/core/constants/firestore_fields.dart';
 import 'package:catlendar/features/cats/data/datasources/medical_history_firestore_data_source.dart';
 import 'package:catlendar/features/cats/data/models/medical_history.dart';
 import 'package:catlendar/features/cats/domain/repositories/medical_history_repository.dart';
 
-/// Scaffold. Hanya newId() yang berfungsi. Sisanya TODO Orang 2.
 class MedicalHistoryRepositoryImpl implements MedicalHistoryRepository {
   MedicalHistoryRepositoryImpl(this.dataSource);
 
@@ -11,34 +13,56 @@ class MedicalHistoryRepositoryImpl implements MedicalHistoryRepository {
   @override
   String newId() => dataSource.newId();
 
-  // TODO(Orang 2): where owner_id == ownerId DAN cat_id == catId.
   @override
   Stream<List<MedicalHistory>> watchHistoryByCat({
     required String ownerId,
     required String catId,
-  }) =>
-      throw UnimplementedError('TODO(Orang 2): watchHistoryByCat');
+  }) {
+    return dataSource.collection
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .where(FirestoreFields.catId, isEqualTo: catId)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => MedicalHistory.fromFirestore(doc))
+              .toList(),
+        );
+  }
 
-  // TODO(Orang 2): versi sekali baca dari query yang sama.
   @override
   Future<List<MedicalHistory>> getHistoryByCat({
     required String ownerId,
     required String catId,
-  }) =>
-      throw UnimplementedError('TODO(Orang 2): getHistoryByCat');
+  }) async {
+    final snapshot = await dataSource.collection
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .where(FirestoreFields.catId, isEqualTo: catId)
+        .get();
 
-  // TODO(Orang 2): set dokumen baru.
-  @override
-  Future<void> addHistory(MedicalHistory history) =>
-      throw UnimplementedError('TODO(Orang 2): addHistory');
+    return snapshot.docs
+        .map((doc) => MedicalHistory.fromFirestore(doc))
+        .toList();
+  }
 
-  // TODO(Orang 2): update dengan updated_at baru.
   @override
-  Future<void> updateHistory(MedicalHistory history) =>
-      throw UnimplementedError('TODO(Orang 2): updateHistory');
+  Future<void> addHistory(MedicalHistory history) async {
+    await dataSource.collection
+        .doc(history.historyId)
+        .set(history.toFirestore());
+  }
 
-  // TODO(Orang 2): hapus dokumen (diizinkan Security Rules).
   @override
-  Future<void> deleteHistory(String historyId) =>
-      throw UnimplementedError('TODO(Orang 2): deleteHistory');
+  Future<void> updateHistory(MedicalHistory history) async {
+    final updateData = history.toFirestore();
+    updateData.remove(FirestoreFields.ownerId);
+    updateData.remove(FirestoreFields.catId);
+    updateData[FirestoreFields.updatedAt] = FieldValue.serverTimestamp();
+
+    await dataSource.collection.doc(history.historyId).update(updateData);
+  }
+
+  @override
+  Future<void> deleteHistory(String historyId) async {
+    await dataSource.collection.doc(historyId).delete();
+  }
 }

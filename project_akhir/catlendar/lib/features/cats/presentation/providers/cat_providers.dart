@@ -59,18 +59,68 @@ final medicalHistoryByCatProvider =
       .watchHistoryByCat(ownerId: ownerId, catId: catId);
 });
 
-/// Contoh pola AsyncNotifier untuk simpan kucing.
-///
-/// TODO(Orang 2): tambahkan updateCat, simpan MEDICAL_HISTORY, dan draft form
-/// (Add/Edit -> Ringkasan kucing) memakai Notifier terpisah.
+/// Notifier untuk menyimpan draf form kucing (Add/Edit) di memori sebelum dikonfirmasi.
+class CatDraftNotifier extends Notifier<Cat?> {
+  @override
+  Cat? build() => null;
+
+  void setDraft(Cat cat) => state = cat;
+
+  void clearDraft() => state = null;
+}
+
+final catDraftProvider = NotifierProvider<CatDraftNotifier, Cat?>(
+  CatDraftNotifier.new,
+);
+
+/// Notifier untuk menyimpan draf riwayat medis sementara sebelum dikonfirmasi.
+class MedicalHistoryDraftNotifier extends Notifier<List<MedicalHistory>> {
+  @override
+  List<MedicalHistory> build() => const [];
+
+  void setDrafts(List<MedicalHistory> histories) => state = histories;
+
+  void clearDrafts() => state = const [];
+}
+
+final medicalHistoryDraftProvider =
+    NotifierProvider<MedicalHistoryDraftNotifier, List<MedicalHistory>>(
+  MedicalHistoryDraftNotifier.new,
+);
+
+/// Controller untuk operasi tulis (Create, Update) ke Firestore.
 class CatEditorController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  Future<void> createCat(Cat cat) async {
+  Future<void> saveCatWithHistory({
+    required Cat cat,
+    List<MedicalHistory> histories = const [],
+    bool isEdit = false,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      if (isEdit) {
+        await ref.read(catRepositoryProvider).updateCat(cat);
+      } else {
+        await ref.read(catRepositoryProvider).createCat(cat);
+      }
+
+      for (final history in histories) {
+        await ref.read(medicalHistoryRepositoryProvider).addHistory(history);
+      }
+    });
+
+    if (!state.hasError) {
+      ref.read(catDraftProvider.notifier).clearDraft();
+      ref.read(medicalHistoryDraftProvider.notifier).clearDrafts();
+    }
+  }
+
+  Future<void> createMedicalHistory(MedicalHistory history) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => ref.read(catRepositoryProvider).createCat(cat),
+      () => ref.read(medicalHistoryRepositoryProvider).addHistory(history),
     );
   }
 }

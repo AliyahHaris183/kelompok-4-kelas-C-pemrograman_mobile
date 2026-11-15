@@ -1,28 +1,413 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:catlendar/shared/widgets/placeholder_screen.dart';
+import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/core/constants/avatar_presets.dart';
+import 'package:catlendar/core/providers/session_providers.dart';
+import 'package:catlendar/features/cats/data/models/cat.dart';
+import 'package:catlendar/features/cats/data/models/medical_history.dart';
+import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
+import 'package:catlendar/core/widgets/cat_avatar.dart';
 
-/// Layar 16: Edit profil kucing.
-///
-/// Form sama dengan Add your first cat, sudah terisi. Ringkasan sebelum simpan. Memperbarui CATS dan MEDICAL_HISTORY, updated_at diisi.
-///
-/// TODO(Orang 2): implementasikan UI dan logika layar ini.
-class EditCatScreen extends ConsumerWidget {
+class EditCatScreen extends ConsumerStatefulWidget {
   const EditCatScreen({super.key, required this.catId});
 
   final String catId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PlaceholderScreen(
-      screenName: 'Edit profil kucing',
-      screenNumber: 16,
-      featureName: 'Cats & Home',
-      owner: 'Orang 2',
-      description:
-          'Form sama dengan Add your first cat, sudah terisi. Ringkasan sebelum simpan. Memperbarui CATS dan MEDICAL_HISTORY, updated_at diisi.',
-      details: {'catId': catId},
+  ConsumerState<EditCatScreen> createState() => _EditCatScreenState();
+}
+
+class _EditCatScreenState extends ConsumerState<EditCatScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  late TextEditingController _nameController;
+  late TextEditingController _newConditionController;
+  late TextEditingController _newNotesController;
+
+  bool _initialized = false;
+  String? _selectedAvatarId;
+  DateTime? _selectedDate;
+  String? _selectedBreed;
+  String? _selectedGender;
+  String? _selectedNeuterStatus;
+  String? _selectedColor;
+
+  final _genderOptions = ['Male', 'Female'];
+  final _neuterOptions = ['Neutered', 'Spayed', 'Intact'];
+  final _colorOptions = [
+    'Black',
+    'White',
+    'Orange',
+    'Grey',
+    'Calico',
+    'Tabby',
+    'Bicolor',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _newConditionController = TextEditingController();
+    _newNotesController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _newConditionController.dispose();
+    _newNotesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  void _onContinue(Cat originalCat, String ownerId) {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date of birth')),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final updatedCat = Cat(
+      catId: originalCat.catId,
+      ownerId: ownerId,
+      name: _nameController.text.trim(),
+      dateOfBirth: _selectedDate!,
+      breed: _selectedBreed ?? 'Domestic',
+      gender: _selectedGender!,
+      neuterStatus: _selectedNeuterStatus!,
+      color: _selectedColor,
+      avatarId: _selectedAvatarId,
+      createdAt: originalCat.createdAt,
+      updatedAt: now,
+    );
+
+    ref.read(catDraftProvider.notifier).setDraft(updatedCat);
+
+    final condition = _newConditionController.text.trim();
+    final notes = _newNotesController.text.trim();
+    if (condition.isNotEmpty) {
+      final historyId = ref.read(medicalHistoryRepositoryProvider).newId();
+      ref.read(medicalHistoryDraftProvider.notifier).setDrafts([
+        MedicalHistory(
+          historyId: historyId,
+          catId: originalCat.catId,
+          ownerId: ownerId,
+          conditionName: condition,
+          notes: notes.isEmpty ? null : notes,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+    } else {
+      ref.read(medicalHistoryDraftProvider.notifier).clearDrafts();
+    }
+
+    context.pushNamed(AppRoutes.catSummary.name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final catAsync = ref.watch(catByIdProvider(widget.catId));
+    final historiesAsync = ref.watch(medicalHistoryByCatProvider(widget.catId));
+    final ownerId = ref.watch(currentUserIdProvider);
+    final breedsAsync = ref.watch(breedsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Cat Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: catAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text('Error: $err')),
+        data: (cat) {
+          if (cat == null) {
+            return const Center(child: Text('Kucing tidak ditemukan'));
+          }
+          if (ownerId == null) {
+            return const Center(child: Text('Sesi tidak valid'));
+          }
+
+          if (!_initialized) {
+            _initialized = true;
+            _nameController.text = cat.name;
+            _selectedAvatarId =
+                cat.avatarId ?? AvatarPresets.catAvatarIds.first;
+            _selectedDate = cat.dateOfBirth;
+            _selectedBreed = cat.breed;
+            _selectedGender = cat.gender;
+            _selectedNeuterStatus = cat.neuterStatus;
+            _selectedColor = cat.color;
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: CatAvatar(avatarId: _selectedAvatarId, radius: 44),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 60,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: AvatarPresets.catAvatarIds.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final presetId = AvatarPresets.catAvatarIds[index];
+                        final isSelected = presetId == _selectedAvatarId;
+                        return GestureDetector(
+                          onTap: () =>
+                              setState(() => _selectedAvatarId = presetId),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.transparent,
+                                width: 2.5,
+                              ),
+                            ),
+                            child: CatAvatar(avatarId: presetId, radius: 24),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name *',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.pets),
+                    ),
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Name is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () => _pickDate(context),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Date of birth *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
+                      child: Text(
+                        _selectedDate != null
+                            ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                            : 'Select Date',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  breedsAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (_, __) => TextFormField(
+                      initialValue: _selectedBreed,
+                      decoration: const InputDecoration(
+                        labelText: 'Breed *',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) => _selectedBreed = val.trim(),
+                    ),
+                    data: (breeds) {
+                      final breedNames = <String>{
+                        'Domestic',
+                        if (_selectedBreed != null) _selectedBreed!,
+                        ...breeds.map((b) => b.name),
+                      }.toList();
+                      return DropdownButtonFormField<String>(
+                        initialValue: _selectedBreed,
+                        decoration: const InputDecoration(
+                          labelText: 'Breed *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: breedNames
+                            .map(
+                              (name) => DropdownMenuItem<String>(
+                                value: name,
+                                child: Text(name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => _selectedBreed = val),
+                        validator: (val) =>
+                            val == null ? 'Breed is required' : null,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedGender,
+                    decoration: const InputDecoration(
+                      labelText: 'Gender *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _genderOptions
+                        .map(
+                          (g) => DropdownMenuItem<String>(
+                            value: g,
+                            child: Text(g),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedGender = val),
+                    validator: (val) =>
+                        val == null ? 'Gender is required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedNeuterStatus,
+                    decoration: const InputDecoration(
+                      labelText: 'Neuter status *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _neuterOptions
+                        .map(
+                          (n) => DropdownMenuItem<String>(
+                            value: n,
+                            child: Text(n),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) =>
+                        setState(() => _selectedNeuterStatus = val),
+                    validator: (val) =>
+                        val == null ? 'Neuter status is required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _colorOptions.contains(_selectedColor)
+                        ? _selectedColor
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Color',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _colorOptions
+                        .map(
+                          (c) => DropdownMenuItem<String>(
+                            value: c,
+                            child: Text(c),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedColor = val),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Saved Medical History',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  historiesAsync.when(
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('Gagal memuat riwayat medis'),
+                    data: (histories) {
+                      if (histories.isEmpty) {
+                        return const Text(
+                          'Belum ada riwayat medis tersimpan.',
+                          style: TextStyle(color: Colors.grey),
+                        );
+                      }
+                      return Column(
+                        children: histories
+                            .map(
+                              (h) => ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(h.conditionName),
+                                subtitle: h.notes != null && h.notes!.isNotEmpty
+                                    ? Text(h.notes!)
+                                    : null,
+                                trailing: IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                  onPressed: () => ref
+                                      .read(medicalHistoryRepositoryProvider)
+                                      .deleteHistory(h.historyId),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Add New Medical History (Optional)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _newConditionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Condition Name (e.g. Asthma, Allergy)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _newNotesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => _onContinue(cat, ownerId),
+                      child: const Text(
+                        'Continue',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
