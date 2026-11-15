@@ -1,25 +1,120 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:catlendar/core/errors/app_exception.dart';
 import 'package:catlendar/features/auth/presentation/providers/auth_providers.dart';
+import 'package:catlendar/features/auth/presentation/providers/profile_providers.dart';
+import 'package:catlendar/features/auth/presentation/providers/session_status_provider.dart';
 
-/// Contoh pola AsyncNotifier untuk aksi autentikasi. Layar cukup membaca
-/// state (AsyncValue) dan memanggil method; tidak ada logika di layar.
+/// Tujuan setelah log in atau verifikasi email berhasil.
+enum PostLoginDestination {
+  /// Email belum diverifikasi -> layar Verifikasi email.
+  verifyEmail,
+
+  /// Akun sudah terverifikasi tetapi profil belum dibuat -> Set up profile.
+  setupProfile,
+
+  /// Akun lengkap -> Greeting, lalu Home.
+  greeting,
+}
+
+/// Controller aksi autentikasi. Layar hanya membaca state (AsyncValue) dan
+/// memanggil method di sini; tidak ada logika Firebase di layar.
 ///
-/// TODO(Orang 1): tambahkan signUp, createPassword, resendVerification,
-/// checkVerified, sendPasswordReset, changePassword, signOut, dan simpan profil.
+/// Catatan: satu controller dipakai bersama oleh banyak layar. Baca
+/// state.error segera setelah aksi selesai, jangan disimpan antar layar.
+///
+/// TODO(Orang 1): changePassword (layar 23) dan Log out dari Settings, yang
+/// harus menghapus fcm_token sebelum signOut.
+/// Catatan: router (route_guard.dart) kini juga mengarahkan pengguna sesuai
+/// status sesi. Navigasi eksplisit di layar tetap dipertahankan dan selalu
+/// menuju tujuan yang sama dengan redirect.
 class AuthController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  Future<void> signIn({required String email, required String password}) async {
+  /// Menjalankan [action] dengan state loading/error. True jika berhasil.
+  Future<bool> _runVoid(Future<void> Function() action) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    state = await AsyncValue.guard(action);
+    return !state.hasError;
+  }
+
+  Future<PostLoginDestination> _resolveDestination(User? user) async {
+    if (user == null) {
+      throw const AppException(
+        'Sesi login tidak ditemukan. Silakan log in ulang.',
+        type: AppErrorType.auth,
+      );
+    }
+    if (!user.emailVerified) return PostLoginDestination.verifyEmail;
+
+    final profile = await ref.read(userRepositoryProvider).getUser(user.uid);
+    return (profile != null && profile.onboardingDone)
+        ? PostLoginDestination.greeting
+        : PostLoginDestination.setupProfile;
+  }
+
+  /// Tujuan navigasi jika berhasil, null jika gagal (error ada di state).
+  /// TODO(Orang 1): simpan fcm_token ke USERS setelah login (tahap FCM).
+  Future<PostLoginDestination?> signIn({
+    required String email,
+    required String password,
+  }) async {
+    PostLoginDestination? destination;
+    final ok = await _runVoid(() async {
+      final auth = ref.read(authRepositoryProvider);
+      await auth.signInWithEmail(email: email, password: password);
+      destination = await _resolveDestination(auth.currentUser);
+    });
+    return ok ? destination : null;
+  }
+
+  /// Membuat akun dan mengirim email verifikasi. Email yang sudah terdaftar
+  /// gagal dengan kode email-already-in-use.
+  Future<bool> signUp({required String email, required String password}) async {
+    final ok = await _runVoid(
       () => ref
           .read(authRepositoryProvider)
-          .signInWithEmail(email: email, password: password),
+          .signUpWithEmail(email: email, password: password),
     );
+    // Dibersihkan di sini (bukan di layar), karena router bisa memindahkan
+    // pengguna dari layar Create password sebelum fungsi ini selesai.
+    if (ok) ref.read(signUpEmailProvider.notifier).clear();
+    return ok;
+  }
+
+  /// Memeriksa status verifikasi (reload user).
+  /// Hasil [PostLoginDestination.verifyEmail] berarti email masih belum
+  /// diverifikasi (bukan error). Null berarti gagal.
+  Future<PostLoginDestination?> checkEmailVerified() async {
+    PostLoginDestination? destination;
+    final ok = await _runVoid(() async {
+      final auth = ref.read(authRepositoryProvider);
+      await auth.reloadAndCheckEmailVerified();
+      // Status verifikasi berubah tanpa memicu stream login, jadi router perlu
+      // diberi tahu agar menghitung ulang aturan aksesnya.
+      ref.read(sessionRefreshProvider.notifier).refresh();
+      destination = await _resolveDestination(auth.currentUser);
+    });
+    return ok ? destination : null;
+  }
+
+  Future<bool> resendVerification() {
+    return _runVoid(() => ref.read(authRepositoryProvider).sendEmailVerification());
+  }
+
+  Future<bool> sendPasswordReset(String email) {
+    return _runVoid(
+      () => ref.read(authRepositoryProvider).sendPasswordResetEmail(email),
+    );
+  }
+
+  /// Hanya aman dipakai sebelum ada fcm_token (mis. layar Verifikasi email).
+  Future<bool> signOut() {
+    return _runVoid(() => ref.read(authRepositoryProvider).signOut());
   }
 }
 

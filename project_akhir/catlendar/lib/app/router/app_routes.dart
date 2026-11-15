@@ -32,9 +32,12 @@ abstract final class AppRoutes {
   static const String catIdParam = 'catId';
   static const String catIdQuery = 'catId';
 
-  /// Sementara: dev menu agar semua layar placeholder dapat dibuka.
-  /// Setelah autentikasi selesai, ganti ke [hello] (atau [home] jika sudah login).
-  static const String initialLocation = '/dev';
+  /// Rute awal aplikasi: Hello. Redirect (route_guard.dart) lalu mengarahkan
+  /// pengguna sesuai status login.
+  /// Untuk memulai dari Dev Menu saat pengembangan, jalankan dengan
+  /// DEV_MENU=true (lihat README).
+  static const String initialLocation =
+      bool.fromEnvironment('DEV_MENU') ? '/dev' : '/hello';
   static const AppRoute devMenu = AppRoute('dev-menu', '/dev');
 
   // ---- Auth & Settings (Orang 1) ----

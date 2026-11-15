@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/dev_menu_screen.dart';
 import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/app/router/route_guard.dart';
+import 'package:catlendar/features/auth/presentation/providers/session_status_provider.dart';
 import 'package:catlendar/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:catlendar/features/auth/presentation/screens/create_password_screen.dart';
 import 'package:catlendar/features/auth/presentation/screens/date_of_birth_screen.dart';
@@ -31,11 +33,15 @@ import 'package:catlendar/features/cats/presentation/screens/home_screen.dart';
 /// Satu-satunya konfigurasi routing aplikasi. Fitur TIDAK boleh membuat router
 /// sendiri; tambahkan rute baru di app_routes.dart lalu di sini.
 final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: AppRoutes.initialLocation,
     // TODO(tim): set true untuk melihat log navigasi saat debugging.
     debugLogDiagnostics: false,
-    redirect: (context, state) => _redirect(ref, state),
+    // Aturan akses ada di route_guard.dart.
+    redirect: (context, state) => resolveRedirect(
+      status: ref.read(sessionStatusProvider),
+      location: state.matchedLocation,
+    ),
     routes: [
       _route(AppRoutes.devMenu, (context, state) => const DevMenuScreen()),
 
@@ -127,6 +133,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  // Evaluasi ulang aturan akses setiap status sesi berubah: login, logout,
+  // email terverifikasi, atau profil selesai dibuat.
+  ref.listen<SessionStatus>(
+    sessionStatusProvider,
+    (previous, next) => router.refresh(),
+  );
+  ref.onDispose(router.dispose);
+
+  return router;
 });
 
 GoRoute _route(
@@ -135,15 +151,3 @@ GoRoute _route(
 ) {
   return GoRoute(path: route.path, name: route.name, builder: builder);
 }
-
-/// Titik pengaman autentikasi.
-///
-/// TODO(Orang 1): implementasikan setelah Auth selesai, memakai
-/// ref.read(authStateChangesProvider) dan USERS.onboarding_done:
-///  - belum login           -> arahkan rute terproteksi ke welcome/login
-///  - login, belum verifikasi -> email verification
-///  - login, onboarding_done == false -> setup profile
-///  - sudah login           -> boleh ke home
-/// Agar redirect ikut berubah saat status login berubah, gunakan
-/// refreshListenable pada GoRouter. Saat ini tidak ada redirect.
-String? _redirect(Ref ref, GoRouterState state) => null;
