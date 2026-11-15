@@ -36,8 +36,7 @@ class _GreetingScreenState extends ConsumerState<GreetingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = ref.watch(currentUserProfileProvider).valueOrNull?.name;
-
+    final name = ref.watch(currentUserProfileProvider).value?.name;
     return GradientBackdrop(
       style: GradientBackdropStyle.welcome,
       child: Center(

@@ -11,5 +11,5 @@ final authStateChangesProvider = StreamProvider<User?>(
 /// UID pengguna yang sedang login, atau null jika belum login.
 /// Dipakai sebagai owner_id pada query CATS, MEDICAL_HISTORY, CARE_RECORD, SCHEDULE.
 final currentUserIdProvider = Provider<String?>(
-  (ref) => ref.watch(authStateChangesProvider).valueOrNull?.uid,
+  (ref) => ref.watch(authStateChangesProvider).value?.uid,
 );

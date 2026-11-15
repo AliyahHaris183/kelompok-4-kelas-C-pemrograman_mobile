@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:catlendar/app/router/app_routes.dart';
 import 'package:catlendar/core/constants/avatar_presets.dart';
 import 'package:catlendar/core/providers/session_providers.dart';
+import 'package:catlendar/core/services/image_upload_service.dart';
+import 'package:catlendar/core/widgets/cat_avatar.dart';
 import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/features/cats/data/models/medical_history.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
-import 'package:catlendar/core/widgets/cat_avatar.dart';
 
 class _PendingMedicalHistory {
   const _PendingMedicalHistory({
@@ -35,6 +36,7 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
   late TextEditingController _medicalNotesController;
 
   String _selectedAvatarId = AvatarPresets.catAvatarIds.first;
+  bool _isUploadingPhoto = false;
   DateTime? _selectedDate;
   String? _selectedBreed = 'Domestic';
   String? _selectedGender;
@@ -72,6 +74,29 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
     _medicalConditionController.dispose();
     _medicalNotesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _uploadCatPhoto() async {
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final imageUrl = await ImageUploadService.pickAndUploadCatImage();
+      if (imageUrl != null && mounted) {
+        setState(() => _selectedAvatarId = imageUrl);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto kucing berhasil diunggah!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengunggah foto: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+      }
+    }
   }
 
   Future<void> _pickDate(BuildContext context) async {
@@ -204,7 +229,31 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
                   radius: 44,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _isUploadingPhoto ? null : _uploadCatPhoto,
+                  icon: _isUploadingPhoto
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.photo_library_outlined, size: 18),
+                  label: Text(
+                    _isUploadingPhoto
+                        ? 'Uploading...'
+                        : (_selectedAvatarId.startsWith('http')
+                            ? 'Change Photo from Gallery'
+                            : 'Upload Photo from Gallery'),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.black87,
+                    side: const BorderSide(color: Colors.black26),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
               SizedBox(
                 height: 60,
                 child: ListView.separated(

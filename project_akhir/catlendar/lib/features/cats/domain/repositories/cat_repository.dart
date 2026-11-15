@@ -5,9 +5,6 @@ import 'package:catlendar/features/cats/data/models/cat.dart';
 /// PENTING: Security Rules memeriksa owner_id pada setiap dokumen, dan Firestore
 /// menolak query yang tidak bisa dibuktikan aman. Semua query list WAJIB memuat
 /// where('owner_id', isEqualTo: uid).
-///
-/// Tidak ada deleteCat: alur v3 tidak memiliki layar hapus kucing, dan
-/// CARE_RECORD tidak bisa dihapus (akan menjadi yatim). Putuskan dulu sebagai tim.
 abstract class CatRepository {
   /// ID dokumen baru (lokal, tanpa jaringan).
   String newId();
@@ -20,4 +17,6 @@ abstract class CatRepository {
 
   /// Perbarui updated_at. owner_id tidak boleh berubah.
   Future<void> updateCat(Cat cat);
+
+  Future<void> deleteCat(String catId);
 }

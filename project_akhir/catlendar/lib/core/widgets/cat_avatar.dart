@@ -18,8 +18,8 @@ class CatAvatar extends StatelessWidget {
   final bool showBorder;
   final String? fallbackName;
 
-  /// Warna lingkaran latar & variasi aksesoris tiap preset agar kucing
-  /// dengan warna bulu yang sama tetap mudah dibedakan.
+  bool get _isNetworkImage => avatarId != null && avatarId!.startsWith('http');
+
   static ({Color bg, Color accent}) _presetStyle(String? id) {
     return switch (id) {
       'cat_1' => (bg: const Color(0xFFFFE0B2), accent: const Color(0xFFE65100)),
@@ -28,6 +28,9 @@ class CatAvatar extends StatelessWidget {
       'cat_4' => (bg: const Color(0xFFF8BBD0), accent: const Color(0xFFC2185B)),
       'cat_5' => (bg: const Color(0xFFE1BEE7), accent: const Color(0xFF6A1B9A)),
       'cat_6' => (bg: const Color(0xFFFFF9C4), accent: const Color(0xFFF57F17)),
+      'cat_7' => (bg: const Color(0xFFE3F2FD), accent: const Color(0xFFFFB300)),
+      'cat_8' => (bg: const Color(0xFFFFCDD2), accent: const Color(0xFFC62828)),
+      'cat_9' => (bg: const Color(0xFFD1C4E9), accent: const Color(0xFF4527A0)),
       _ => (bg: Colors.grey.shade200, accent: Colors.grey.shade700),
     };
   }
@@ -60,26 +63,58 @@ class CatAvatar extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: (avatarId == null &&
-              fallbackName != null &&
-              fallbackName!.trim().isNotEmpty)
-          ? Center(
-              child: Text(
-                fallbackName!.trim()[0].toUpperCase(),
-                style: TextStyle(
-                  fontSize: radius * 0.75,
-                  fontWeight: FontWeight.bold,
-                  color: preset.accent,
-                ),
-              ),
-            )
-          : CustomPaint(
-              size: Size(diameter, diameter),
-              painter: _CatFacePainter(
-                avatarId: avatarId ?? 'cat_1',
-                catColor: catColor,
-              ),
+      child: _buildChild(preset, diameter),
+    );
+  }
+
+  Widget _buildChild(({Color bg, Color accent}) preset, double diameter) {
+    if (_isNetworkImage) {
+      return Image.network(
+        avatarId!,
+        width: diameter,
+        height: diameter,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: SizedBox(
+              width: radius * 0.7,
+              height: radius * 0.7,
+              child: const CircularProgressIndicator(strokeWidth: 2),
             ),
+          );
+        },
+        errorBuilder: (_, __, ___) => CustomPaint(
+          size: Size(diameter, diameter),
+          painter: _CatFacePainter(
+            avatarId: 'cat_1',
+            catColor: catColor,
+          ),
+        ),
+      );
+    }
+
+    if (avatarId == null &&
+        fallbackName != null &&
+        fallbackName!.trim().isNotEmpty) {
+      return Center(
+        child: Text(
+          fallbackName!.trim()[0].toUpperCase(),
+          style: TextStyle(
+            fontSize: radius * 0.75,
+            fontWeight: FontWeight.bold,
+            color: preset.accent,
+          ),
+        ),
+      );
+    }
+
+    return CustomPaint(
+      size: Size(diameter, diameter),
+      painter: _CatFacePainter(
+        avatarId: avatarId ?? 'cat_1',
+        catColor: catColor,
+      ),
     );
   }
 }
@@ -140,7 +175,14 @@ class _CatFacePainter extends CustomPainter {
     final furColor = _baseFurColor(catColor);
     final normalizedColor = catColor?.toLowerCase();
 
-    // 1. Warna dasar kepala & telinga kucing
+    // Elemen belakang kepala (sayap malaikat & ekor iblis)
+    if (avatarId == 'cat_7') {
+      _drawAngelWings(canvas, w, h);
+    } else if (avatarId == 'cat_8') {
+      _drawDevilTail(canvas, w, h);
+    }
+
+    // Dasar warna kepala kucing
     canvas.drawPath(
       headPath,
       Paint()
@@ -148,25 +190,22 @@ class _CatFacePainter extends CustomPainter {
         ..style = PaintingStyle.fill,
     );
 
-    // 2. Motif belang khusus (Calico, Bicolor, Tabby, Tortoiseshell)
+    // Pola bulu khusus (Calico, Bicolor, Tabby, Tortoiseshell)
     canvas.save();
     canvas.clipPath(headPath);
 
     if (normalizedColor == 'calico') {
-      // Belang oranye di sisi kiri atas
       canvas.drawCircle(
         Offset(0.28 * w, 0.33 * h),
         0.22 * w,
         Paint()..color = const Color(0xFFF57C00),
       );
-      // Belang hitam di sisi kanan
       canvas.drawCircle(
         Offset(0.74 * w, 0.38 * h),
         0.20 * w,
         Paint()..color = const Color(0xFF2B2B30),
       );
     } else if (normalizedColor == 'bicolor') {
-      // Corak putih di area moncong bawah (tuxedo)
       final whiteMuzzle = Path()
         ..moveTo(0.50 * w, 0.50 * h)
         ..lineTo(0.24 * w, 0.78 * h)
@@ -174,7 +213,6 @@ class _CatFacePainter extends CustomPainter {
         ..close();
       canvas.drawPath(whiteMuzzle, Paint()..color = const Color(0xFFFAFAFA));
     } else if (normalizedColor == 'tabby') {
-      // Garis belang dahi khas kucing tabby
       final stripePaint = Paint()
         ..color = const Color(0xFF4E342E)
         ..strokeWidth = w * 0.028
@@ -195,7 +233,6 @@ class _CatFacePainter extends CustomPainter {
         stripePaint,
       );
     } else if (normalizedColor == 'tortoiseshell') {
-      // Bercak oranye kecokelatan acak
       canvas.drawCircle(
         Offset(0.32 * w, 0.36 * h),
         0.15 * w,
@@ -209,7 +246,7 @@ class _CatFacePainter extends CustomPainter {
     }
     canvas.restore();
 
-    // 3. Garis tepi tipis agar warna putih/cerah tetap tegas
+    // Garis luar kepala
     canvas.drawPath(
       headPath,
       Paint()
@@ -219,7 +256,7 @@ class _CatFacePainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // 4. Bagian dalam telinga
+    // Bagian dalam telinga
     final innerEarPaint = Paint()..color = const Color(0xFFF48FB1);
     final leftInnerEar = Path()
       ..moveTo(0.26 * w, 0.39 * h)
@@ -234,7 +271,7 @@ class _CatFacePainter extends CustomPainter {
     canvas.drawPath(leftInnerEar, innerEarPaint);
     canvas.drawPath(rightInnerEar, innerEarPaint);
 
-    // 5. Mata (menyesuaikan kontras warna bulu)
+    // Mata & kilau mata
     final eyeColor =
         _isDarkFur ? const Color(0xFFFFD54F) : const Color(0xFF263238);
     final eyePaint = Paint()..color = eyeColor;
@@ -242,7 +279,6 @@ class _CatFacePainter extends CustomPainter {
     canvas.drawCircle(Offset(0.38 * w, 0.54 * h), eyeRadius, eyePaint);
     canvas.drawCircle(Offset(0.62 * w, 0.54 * h), eyeRadius, eyePaint);
 
-    // Kilau mata kecil
     final sparklePaint = Paint()..color = Colors.white;
     canvas.drawCircle(
       Offset(0.368 * w, 0.528 * h),
@@ -255,7 +291,7 @@ class _CatFacePainter extends CustomPainter {
       sparklePaint,
     );
 
-    // 6. Hidung & mulut mungil
+    // Hidung
     final nosePaint = Paint()..color = const Color(0xFFF06292);
     final nosePath = Path()
       ..moveTo(0.47 * w, 0.61 * h)
@@ -264,6 +300,7 @@ class _CatFacePainter extends CustomPainter {
       ..close();
     canvas.drawPath(nosePath, nosePaint);
 
+    // Mulut
     final mouthColor = (normalizedColor == 'bicolor' || !_isDarkFur)
         ? const Color(0xFF37474F)
         : Colors.white70;
@@ -279,16 +316,14 @@ class _CatFacePainter extends CustomPainter {
       ..quadraticBezierTo(0.525 * w, 0.69 * h, 0.55 * w, 0.665 * h);
     canvas.drawPath(mouthPath, mouthPaint);
 
-    // 7. Aksesori pembeda tiap preset (cat_1 .. cat_6)
+    // Aksesori sesuai preset
     if (avatarId == 'cat_2') {
-      // Lonceng emas kecil di bawah dagu
       canvas.drawCircle(
         Offset(0.50 * w, 0.81 * h),
         w * 0.055,
         Paint()..color = const Color(0xFFFFB300),
       );
     } else if (avatarId == 'cat_3') {
-      // Daun kecil di atas kepala
       canvas.drawOval(
         Rect.fromCenter(
           center: Offset(0.53 * w, 0.27 * h),
@@ -298,20 +333,17 @@ class _CatFacePainter extends CustomPainter {
         Paint()..color = const Color(0xFF43A047),
       );
     } else if (avatarId == 'cat_4') {
-      // Pipi merona
       final blushPaint = Paint()
         ..color = const Color(0xFFF48FB1).withValues(alpha: 0.65);
       canvas.drawCircle(Offset(0.31 * w, 0.61 * h), w * 0.04, blushPaint);
       canvas.drawCircle(Offset(0.69 * w, 0.61 * h), w * 0.04, blushPaint);
     } else if (avatarId == 'cat_5') {
-      // Tanda bintang/titik emas di dahi
       canvas.drawCircle(
         Offset(0.50 * w, 0.43 * h),
         w * 0.032,
         Paint()..color = const Color(0xFFFDD835),
       );
     } else if (avatarId == 'cat_6') {
-      // Dasi kupu-kupu kecil di bawah dagu
       final bowPaint = Paint()..color = const Color(0xFF1E88E5);
       final bow = Path()
         ..moveTo(0.50 * w, 0.81 * h)
@@ -323,7 +355,201 @@ class _CatFacePainter extends CustomPainter {
         ..lineTo(0.59 * w, 0.85 * h)
         ..close();
       canvas.drawPath(bow, bowPaint);
+    } else if (avatarId == 'cat_7') {
+      _drawAngelHalo(canvas, w, h);
+    } else if (avatarId == 'cat_8') {
+      _drawDevilHornsAndFangs(canvas, w, h);
+    } else if (avatarId == 'cat_9') {
+      _drawWitchHat(canvas, w, h);
     }
+  }
+
+  void _drawAngelWings(Canvas canvas, double w, double h) {
+    final wingFill = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final wingStroke = Paint()
+      ..color = const Color(0xFF90A4AE)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.018
+      ..strokeJoin = StrokeJoin.round;
+
+    final leftWing = Path()
+      ..moveTo(0.24 * w, 0.56 * h)
+      ..quadraticBezierTo(0.08 * w, 0.43 * h, 0.11 * w, 0.56 * h)
+      ..quadraticBezierTo(0.09 * w, 0.63 * h, 0.16 * w, 0.64 * h)
+      ..quadraticBezierTo(0.14 * w, 0.70 * h, 0.25 * w, 0.67 * h)
+      ..close();
+
+    final rightWing = Path()
+      ..moveTo(0.76 * w, 0.56 * h)
+      ..quadraticBezierTo(0.92 * w, 0.43 * h, 0.89 * w, 0.56 * h)
+      ..quadraticBezierTo(0.91 * w, 0.63 * h, 0.84 * w, 0.64 * h)
+      ..quadraticBezierTo(0.86 * w, 0.70 * h, 0.75 * w, 0.67 * h)
+      ..close();
+
+    canvas.drawPath(leftWing, wingFill);
+    canvas.drawPath(leftWing, wingStroke);
+    canvas.drawPath(rightWing, wingFill);
+    canvas.drawPath(rightWing, wingStroke);
+  }
+
+  void _drawAngelHalo(Canvas canvas, double w, double h) {
+    final haloRect = Rect.fromCenter(
+      center: Offset(0.50 * w, 0.13 * h),
+      width: w * 0.34,
+      height: h * 0.085,
+    );
+
+    canvas.drawOval(
+      haloRect,
+      Paint()
+        ..color = const Color(0xFFFFD54F).withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.045,
+    );
+    canvas.drawOval(
+      haloRect,
+      Paint()
+        ..color = const Color(0xFFFFB300)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.022,
+    );
+  }
+
+  void _drawDevilTail(Canvas canvas, double w, double h) {
+    final tailColor = const Color(0xFFD32F2F);
+    final tailStem = Path()
+      ..moveTo(0.75 * w, 0.68 * h)
+      ..quadraticBezierTo(0.88 * w, 0.66 * h, 0.86 * w, 0.52 * h);
+
+    canvas.drawPath(
+      tailStem,
+      Paint()
+        ..color = tailColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.024
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final tailTip = Path()
+      ..moveTo(0.86 * w, 0.46 * h)
+      ..lineTo(0.81 * w, 0.54 * h)
+      ..lineTo(0.91 * w, 0.54 * h)
+      ..close();
+    canvas.drawPath(tailTip, Paint()..color = tailColor);
+  }
+
+  void _drawDevilHornsAndFangs(Canvas canvas, double w, double h) {
+    final hornFill = Paint()..color = const Color(0xFFD32F2F);
+    final hornStroke = Paint()
+      ..color = const Color(0xFF7F0000)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.016
+      ..strokeJoin = StrokeJoin.round;
+
+    final leftHorn = Path()
+      ..moveTo(0.39 * w, 0.34 * h)
+      ..quadraticBezierTo(0.35 * w, 0.25 * h, 0.38 * w, 0.20 * h)
+      ..quadraticBezierTo(0.43 * w, 0.26 * h, 0.45 * w, 0.33 * h)
+      ..close();
+
+    final rightHorn = Path()
+      ..moveTo(0.61 * w, 0.34 * h)
+      ..quadraticBezierTo(0.65 * w, 0.25 * h, 0.62 * w, 0.20 * h)
+      ..quadraticBezierTo(0.57 * w, 0.26 * h, 0.55 * w, 0.33 * h)
+      ..close();
+
+    canvas.drawPath(leftHorn, hornFill);
+    canvas.drawPath(leftHorn, hornStroke);
+    canvas.drawPath(rightHorn, hornFill);
+    canvas.drawPath(rightHorn, hornStroke);
+
+    // Taring mungil
+    final fangPaint = Paint()..color = Colors.white;
+    final leftFang = Path()
+      ..moveTo(0.455 * w, 0.67 * h)
+      ..lineTo(0.478 * w, 0.67 * h)
+      ..lineTo(0.466 * w, 0.705 * h)
+      ..close();
+    final rightFang = Path()
+      ..moveTo(0.522 * w, 0.67 * h)
+      ..lineTo(0.545 * w, 0.67 * h)
+      ..lineTo(0.534 * w, 0.705 * h)
+      ..close();
+    canvas.drawPath(leftFang, fangPaint);
+    canvas.drawPath(rightFang, fangPaint);
+  }
+
+  void _drawWitchHat(Canvas canvas, double w, double h) {
+    canvas.save();
+    canvas.translate(0.50 * w, 0.32 * h);
+    canvas.rotate(-0.10);
+
+    final hatPurple = Paint()..color = const Color(0xFF311B92);
+    final hatOutline = Paint()
+      ..color = const Color(0xFF1A0066)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.018
+      ..strokeJoin = StrokeJoin.round;
+
+    // Pinggiran lebar topi
+    final brim = Rect.fromCenter(
+      center: Offset.zero,
+      width: w * 0.64,
+      height: h * 0.12,
+    );
+    canvas.drawOval(brim, hatPurple);
+    canvas.drawOval(brim, hatOutline);
+
+    // Kerucut topi penyihir
+    final cone = Path()
+      ..moveTo(-0.19 * w, -0.01 * h)
+      ..quadraticBezierTo(-0.08 * w, -0.16 * h, 0.07 * w, -0.24 * h)
+      ..quadraticBezierTo(0.09 * w, -0.14 * h, 0.19 * w, -0.01 * h)
+      ..close();
+    canvas.drawPath(cone, hatPurple);
+    canvas.drawPath(cone, hatOutline);
+
+    // Sabuk emas & gesper
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: Offset(0, -0.03 * h),
+        width: w * 0.34,
+        height: h * 0.04,
+      ),
+      Paint()..color = const Color(0xFFFFCA28),
+    );
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: Offset(0, -0.03 * h),
+        width: w * 0.08,
+        height: h * 0.055,
+      ),
+      Paint()
+        ..color = const Color(0xFFFFF8E1)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.016,
+    );
+
+    canvas.restore();
+
+    // Kilau bintang kecil di kanan atas
+    final starPaint = Paint()..color = const Color(0xFFFFCA28);
+    final sx = 0.77 * w;
+    final sy = 0.18 * h;
+    final sr = w * 0.042;
+    final star = Path()
+      ..moveTo(sx, sy - sr)
+      ..lineTo(sx + sr * 0.3, sy - sr * 0.3)
+      ..lineTo(sx + sr, sy)
+      ..lineTo(sx + sr * 0.3, sy + sr * 0.3)
+      ..lineTo(sx, sy + sr)
+      ..lineTo(sx - sr * 0.3, sy + sr * 0.3)
+      ..lineTo(sx - sr, sy)
+      ..lineTo(sx - sr * 0.3, sy - sr * 0.3)
+      ..close();
+    canvas.drawPath(star, starPaint);
   }
 
   @override

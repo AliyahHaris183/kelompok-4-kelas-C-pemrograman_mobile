@@ -69,7 +69,7 @@ final sessionStatusProvider = Provider<SessionStatus>((ref) {
   if (profile.hasError) return SessionStatus.error;
   if (!profile.hasValue) return SessionStatus.loading;
 
-  final appUser = profile.valueOrNull;
+  final appUser = profile.value;
   return (appUser != null && appUser.onboardingDone)
       ? SessionStatus.ready
       : SessionStatus.needsProfile;

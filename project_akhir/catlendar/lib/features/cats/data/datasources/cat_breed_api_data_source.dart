@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:catlendar/core/constants/app_constants.dart';
@@ -9,11 +10,28 @@ class CatBreedApiDataSource {
 
   final http.Client client;
 
-  // TODO(Orang 2): GET ${AppConstants.theCatApiBaseUrl}/breeds dengan header
-  // x-api-key = AppConstants.theCatApiKey (dari --dart-define), parse JSON ke
-  // List<CatBreed> lewat CatBreed.fromJson. Tangani error lewat AppException.
-  // Siapkan fallback bila API gagal: pengguna tetap bisa memilih Domestic.
-  Future<List<CatBreed>> fetchBreeds() => throw UnimplementedError(
-        'TODO(Orang 2): ambil breed dari ${AppConstants.theCatApiBaseUrl}/breeds',
-      );
+  Future<List<CatBreed>> fetchBreeds() async {
+    try {
+      final uri = Uri.parse('${AppConstants.theCatApiBaseUrl}/breeds');
+      final headers = <String, String>{
+        if (AppConstants.theCatApiKey.isNotEmpty)
+          'x-api-key': AppConstants.theCatApiKey,
+      };
+
+      final response = await client.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+        return data
+            .map((json) => CatBreed.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      // Fallback jika API gagal: dropdown di UI tetap menampilkan 'Domestic'
+      return const [];
+    } catch (_) {
+      // Fallback jika offline / error jaringan agar pengguna tetap bisa memilih 'Domestic'
+      return const [];
+    }
+  }
 }

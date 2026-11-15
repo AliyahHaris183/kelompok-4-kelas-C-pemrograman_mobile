@@ -52,4 +52,9 @@ class CatRepositoryImpl implements CatRepository {
 
     await dataSource.collection.doc(cat.catId).update(updateData);
   }
+
+  @override
+  Future<void> deleteCat(String catId) async {
+    await dataSource.collection.doc(catId).delete();
+  }
 }

@@ -19,5 +19,8 @@ abstract final class AvatarPresets {
     'cat_4',
     'cat_5',
     'cat_6',
+    'cat_7',
+    'cat_8',
+    'cat_9',
   ];
 }
