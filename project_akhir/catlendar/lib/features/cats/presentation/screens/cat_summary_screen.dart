@@ -72,8 +72,11 @@ class CatSummaryScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    // Menggunakan CatAvatar agar tidak crash saat avatarId = 'cat_1'
-                    CatAvatar(avatarId: catDraft.avatarId, radius: 40),
+                    CatAvatar(
+                      avatarId: catDraft.avatarId,
+                      catColor: catDraft.color,
+                      radius: 40,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       catDraft.name,
@@ -91,7 +94,6 @@ class CatSummaryScreen extends ConsumerWidget {
                       'Date of Birth',
                       '${catDraft.dateOfBirth.day}/${catDraft.dateOfBirth.month}/${catDraft.dateOfBirth.year}',
                     ),
-
                     if (historyDrafts.isNotEmpty) ...[
                       const Divider(height: 24),
                       const Align(
@@ -156,7 +158,6 @@ class CatSummaryScreen extends ConsumerWidget {
                     onPressed: isSaving
                         ? null
                         : () {
-                            // Jika updatedAt lebih baru dari createdAt, berarti ini mode Edit
                             final isEdit = catDraft.updatedAt.isAfter(
                               catDraft.createdAt,
                             );

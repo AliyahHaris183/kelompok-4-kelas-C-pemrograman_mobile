@@ -10,6 +10,16 @@ import 'package:catlendar/features/cats/data/models/medical_history.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
 
+class _PendingMedicalHistory {
+  const _PendingMedicalHistory({
+    required this.conditionName,
+    this.notes,
+  });
+
+  final String conditionName;
+  final String? notes;
+}
+
 class AddCatScreen extends ConsumerStatefulWidget {
   const AddCatScreen({super.key});
 
@@ -31,6 +41,8 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
   String? _selectedNeuterStatus;
   String? _selectedColor;
 
+  final List<_PendingMedicalHistory> _pendingHistories = [];
+
   final _genderOptions = ['Male', 'Female'];
   final _neuterOptions = ['Neutered', 'Spayed', 'Intact'];
   final _colorOptions = [
@@ -41,6 +53,9 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
     'Calico',
     'Tabby',
     'Bicolor',
+    'Tortoiseshell',
+    'Cream',
+    'Brown',
   ];
 
   @override
@@ -71,6 +86,29 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
     }
   }
 
+  void _addMedicalHistory() {
+    final condition = _medicalConditionController.text.trim();
+    final notes = _medicalNotesController.text.trim();
+
+    if (condition.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a condition name first')),
+      );
+      return;
+    }
+
+    setState(() {
+      _pendingHistories.add(
+        _PendingMedicalHistory(
+          conditionName: condition,
+          notes: notes.isEmpty ? null : notes,
+        ),
+      );
+      _medicalConditionController.clear();
+      _medicalNotesController.clear();
+    });
+  }
+
   void _onContinue(String ownerId) {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null) {
@@ -99,21 +137,34 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
 
     ref.read(catDraftProvider.notifier).setDraft(newCat);
 
-    final condition = _medicalConditionController.text.trim();
-    final notes = _medicalNotesController.text.trim();
-    if (condition.isNotEmpty) {
-      final historyId = ref.read(medicalHistoryRepositoryProvider).newId();
-      ref.read(medicalHistoryDraftProvider.notifier).setDrafts([
-        MedicalHistory(
-          historyId: historyId,
-          catId: newCatId,
-          ownerId: ownerId,
-          conditionName: condition,
-          notes: notes.isEmpty ? null : notes,
-          createdAt: now,
-          updatedAt: now,
+    final allPending = List<_PendingMedicalHistory>.from(_pendingHistories);
+    final trailingCondition = _medicalConditionController.text.trim();
+    final trailingNotes = _medicalNotesController.text.trim();
+    if (trailingCondition.isNotEmpty) {
+      allPending.add(
+        _PendingMedicalHistory(
+          conditionName: trailingCondition,
+          notes: trailingNotes.isEmpty ? null : trailingNotes,
         ),
-      ]);
+      );
+    }
+
+    if (allPending.isNotEmpty) {
+      final repo = ref.read(medicalHistoryRepositoryProvider);
+      final drafts = allPending
+          .map(
+            (item) => MedicalHistory(
+              historyId: repo.newId(),
+              catId: newCatId,
+              ownerId: ownerId,
+              conditionName: item.conditionName,
+              notes: item.notes,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          )
+          .toList();
+      ref.read(medicalHistoryDraftProvider.notifier).setDrafts(drafts);
     } else {
       ref.read(medicalHistoryDraftProvider.notifier).clearDrafts();
     }
@@ -146,7 +197,13 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: CatAvatar(avatarId: _selectedAvatarId, radius: 44)),
+              Center(
+                child: CatAvatar(
+                  avatarId: _selectedAvatarId,
+                  catColor: _selectedColor,
+                  radius: 44,
+                ),
+              ),
               const SizedBox(height: 12),
               SizedBox(
                 height: 60,
@@ -169,7 +226,11 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
                             width: 2.5,
                           ),
                         ),
-                        child: CatAvatar(avatarId: presetId, radius: 24),
+                        child: CatAvatar(
+                          avatarId: presetId,
+                          catColor: _selectedColor,
+                          radius: 24,
+                        ),
                       ),
                     );
                   },
@@ -304,7 +365,28 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
                 'Medical History (Optional)',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              if (_pendingHistories.isNotEmpty) ...[
+                ..._pendingHistories.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      item.conditionName,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: item.notes != null ? Text(item.notes!) : null,
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () {
+                        setState(() => _pendingHistories.removeAt(index));
+                      },
+                    ),
+                  );
+                }),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _medicalConditionController,
                 decoration: const InputDecoration(
@@ -320,6 +402,20 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _addMedicalHistory,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Medical History'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    side: const BorderSide(color: Colors.black),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
               SizedBox(
