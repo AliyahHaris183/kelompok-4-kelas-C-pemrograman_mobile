@@ -10,6 +10,7 @@ import 'package:catlendar/core/widgets/cat_avatar.dart';
 import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/features/cats/data/models/medical_history.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
+import 'package:catlendar/features/cats/presentation/widgets/breed_picker_field.dart';
 
 class _PendingMedicalHistory {
   const _PendingMedicalHistory({
@@ -333,25 +334,12 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
                     if (_selectedBreed != null) _selectedBreed!,
                     ...breeds.map((b) => b.name),
                   }.toList();
-                  return DropdownButtonFormField<String>(
-                    initialValue: breedNames.contains(_selectedBreed)
+                  return BreedPickerField(
+                    selectedBreed: breedNames.contains(_selectedBreed)
                         ? _selectedBreed
                         : 'Domestic',
-                    decoration: const InputDecoration(
-                      labelText: 'Breed *',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: breedNames
-                        .map(
-                          (name) => DropdownMenuItem<String>(
-                            value: name,
-                            child: Text(name),
-                          ),
-                        )
-                        .toList(),
+                    breedNames: breedNames,
                     onChanged: (val) => setState(() => _selectedBreed = val),
-                    validator: (val) =>
-                        val == null ? 'Breed is required' : null,
                   );
                 },
               ),

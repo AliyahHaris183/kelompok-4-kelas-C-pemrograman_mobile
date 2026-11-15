@@ -49,8 +49,11 @@ class CatProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Menggunakan CatAvatar agar tidak crash saat avatarId = 'cat_1'
-                CatAvatar(avatarId: cat.avatarId, radius: 60),
+                CatAvatar(
+                  avatarId: cat.avatarId,
+                  catColor: cat.color,
+                  radius: 60,
+                ),
                 const SizedBox(height: 16),
 
                 Text(

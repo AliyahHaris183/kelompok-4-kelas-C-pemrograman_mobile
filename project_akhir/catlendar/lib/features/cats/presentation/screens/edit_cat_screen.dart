@@ -10,6 +10,7 @@ import 'package:catlendar/core/widgets/cat_avatar.dart';
 import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/features/cats/data/models/medical_history.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
+import 'package:catlendar/features/cats/presentation/widgets/breed_picker_field.dart';
 
 class EditCatScreen extends ConsumerStatefulWidget {
   const EditCatScreen({super.key, required this.catId});
@@ -353,24 +354,11 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
                         if (_selectedBreed != null) _selectedBreed!,
                         ...breeds.map((b) => b.name),
                       }.toList();
-                      return DropdownButtonFormField<String>(
-                        initialValue: _selectedBreed,
-                        decoration: const InputDecoration(
-                          labelText: 'Breed *',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: breedNames
-                            .map(
-                              (name) => DropdownMenuItem<String>(
-                                value: name,
-                                child: Text(name),
-                              ),
-                            )
-                            .toList(),
+                      return BreedPickerField(
+                        selectedBreed: _selectedBreed,
+                        breedNames: breedNames,
                         onChanged: (val) =>
                             setState(() => _selectedBreed = val),
-                        validator: (val) =>
-                            val == null ? 'Breed is required' : null,
                       );
                     },
                   ),
