@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/core/constants/app_assets.dart';
 import 'package:catlendar/core/errors/app_exception.dart';
 import 'package:catlendar/core/utils/validators.dart';
 import 'package:catlendar/features/auth/presentation/providers/auth_controller.dart';
@@ -75,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AuthMascot(assetPath: 'assets/images/cat_login.png'),
+            const AuthMascot(assetPath: AppAssets.catLogin),
             const SizedBox(height: 8),
             const Text(
               'Log in to your account',
