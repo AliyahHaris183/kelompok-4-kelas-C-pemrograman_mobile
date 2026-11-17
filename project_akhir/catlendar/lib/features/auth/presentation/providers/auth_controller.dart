@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:catlendar/core/errors/app_exception.dart';
+import 'package:catlendar/core/providers/notification_providers.dart';
 import 'package:catlendar/features/auth/presentation/providers/auth_providers.dart';
+import 'package:catlendar/features/auth/presentation/providers/fcm_token_sync.dart';
 import 'package:catlendar/features/auth/presentation/providers/profile_providers.dart';
 import 'package:catlendar/features/auth/presentation/providers/session_status_provider.dart';
 
@@ -26,8 +28,6 @@ enum PostLoginDestination {
 /// Catatan: satu controller dipakai bersama oleh banyak layar. Baca
 /// state.error segera setelah aksi selesai, jangan disimpan antar layar.
 ///
-/// TODO(Orang 1): changePassword (layar 23) dan Log out dari Settings, yang
-/// harus menghapus fcm_token sebelum signOut.
 /// Catatan: router (route_guard.dart) kini juga mengarahkan pengguna sesuai
 /// status sesi. Navigasi eksplisit di layar tetap dipertahankan dan selalu
 /// menuju tujuan yang sama dengan redirect.
@@ -58,7 +58,7 @@ class AuthController extends AsyncNotifier<void> {
   }
 
   /// Tujuan navigasi jika berhasil, null jika gagal (error ada di state).
-  /// TODO(Orang 1): simpan fcm_token ke USERS setelah login (tahap FCM).
+  /// fcm_token disimpan oleh fcm_token_sync.dart saat status sesi menjadi ready.
   Future<PostLoginDestination?> signIn({
     required String email,
     required String password,
@@ -113,8 +113,65 @@ class AuthController extends AsyncNotifier<void> {
   }
 
   /// Hanya aman dipakai sebelum ada fcm_token (mis. layar Verifikasi email).
+  /// Untuk Log out dari Settings pakai [logout].
   Future<bool> signOut() {
     return _runVoid(() => ref.read(authRepositoryProvider).signOut());
+  }
+
+  /// Ubah password (layar 23): reautentikasi dengan password lama, lalu
+  /// updatePassword. Password lama salah gagal dengan kode wrong-password
+  /// atau invalid-credential.
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _runVoid(
+      () => ref.read(authRepositoryProvider).changePassword(
+            currentPassword: currentPassword,
+            newPassword: newPassword,
+          ),
+    );
+  }
+
+  /// Log out (layar 24). Urutan:
+  ///  1. hentikan sinkronisasi token agar tidak menulis ulang saat logout,
+  ///  2. hapus USERS.fcm_token (harus sebelum signOut, karena setelah sign out
+  ///     Security Rules menolak penulisan ke USERS),
+  ///  3. hapus token di perangkat agar tidak terbawa ke akun berikutnya,
+  ///  4. signOut. Router lalu mengarahkan ke Welcome.
+  ///
+  /// Langkah 2 dan 3 best effort (batas waktu 5 detik): jika offline atau
+  /// gagal, pengguna tetap bisa keluar.
+  Future<bool> logout() {
+    return _runVoid(() async {
+      final auth = ref.read(authRepositoryProvider);
+      final userId = auth.currentUser?.uid;
+
+      await ref.read(fcmTokenSyncProvider).stop();
+
+      if (userId != null) {
+        try {
+          await ref
+              .read(userRepositoryProvider)
+              .updateFcmToken(userId: userId, token: null)
+              .timeout(const Duration(seconds: 5));
+        } catch (_) {
+          // Sengaja diabaikan: gagal menghapus token tidak boleh menghalangi
+          // pengguna keluar dari akun.
+        }
+      }
+
+      try {
+        await ref
+            .read(fcmServiceProvider)
+            .deleteToken()
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Sama seperti di atas.
+      }
+
+      await auth.signOut();
+    });
   }
 }
 

@@ -13,7 +13,7 @@ import 'package:catlendar/features/auth/presentation/widgets/auth_scaffold.dart'
 /// Layar 11: Ringkasan profil. Nama, tanggal lahir, gender, dan peringatan
 /// sebelum simpan. Save membuat dokumen USERS dengan onboarding_done = true.
 ///
-/// TODO(Orang 1): fcm_token ikut disimpan di sini setelah FcmService selesai.
+/// fcm_token disimpan otomatis oleh fcm_token_sync.dart setelah profil dibuat.
 class ProfileSummaryScreen extends ConsumerWidget {
   const ProfileSummaryScreen({super.key});
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/core/constants/app_assets.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_mascot.dart';
 import 'package:catlendar/features/auth/presentation/widgets/gradient_backdrop.dart';
 
@@ -41,7 +42,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AuthMascot(
-              assetPath: 'assets/images/cat_welcome.png',
+              assetPath: AppAssets.catWelcome,
               size: 64,
               fallbackColor: Colors.white,
             ),

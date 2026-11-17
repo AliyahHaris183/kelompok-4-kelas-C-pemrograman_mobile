@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/core/constants/app_assets.dart';
 import 'package:catlendar/core/utils/validators.dart';
 import 'package:catlendar/features/auth/presentation/providers/profile_providers.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_button.dart';
@@ -53,7 +54,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AuthMascot(assetPath: 'assets/images/cat_signup.png'),
+            const AuthMascot(assetPath: AppAssets.catSignup),
             const SizedBox(height: 8),
             const Text(
               'Sign up',

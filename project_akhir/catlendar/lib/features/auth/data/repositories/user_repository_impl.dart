@@ -1,9 +1,10 @@
+import 'package:catlendar/core/constants/firestore_fields.dart';
+import 'package:catlendar/core/utils/firestore_converters.dart';
 import 'package:catlendar/features/auth/data/datasources/user_firestore_data_source.dart';
 import 'package:catlendar/features/auth/data/models/app_user.dart';
 import 'package:catlendar/features/auth/domain/repositories/user_repository.dart';
 
-/// Repository USERS. Milik Orang 1.
-/// getUser, watchUser, dan createUser sudah berfungsi.
+/// Repository USERS. Milik Orang 1. Semua method sudah berfungsi.
 class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl(this.dataSource);
 
@@ -32,16 +33,25 @@ class UserRepositoryImpl implements UserRepository {
     return dataSource.doc(user.userId).set(user.toFirestore());
   }
 
-  // TODO(Orang 1): update dengan updated_at baru (edit profil pemilik, layar 22).
+  /// Memperbarui dokumen yang sudah ada dan mengisi updated_at dengan waktu
+  /// sekarang. Gagal (not-found) jika dokumen belum ada, tidak membuat baru.
   @override
-  Future<void> updateUser(AppUser user) =>
-      throw UnimplementedError('TODO(Orang 1): updateUser');
+  Future<void> updateUser(AppUser user) {
+    return dataSource.doc(user.userId).update({
+      ...user.toFirestore(),
+      FirestoreFields.updatedAt: dateTimeToTimestamp(DateTime.now()),
+    });
+  }
 
-  // TODO(Orang 1): update hanya field fcm_token (+ updated_at).
+  /// Menyimpan token FCM (login) atau menghapusnya dengan null (log out).
   @override
   Future<void> updateFcmToken({
     required String userId,
     required String? token,
-  }) =>
-      throw UnimplementedError('TODO(Orang 1): updateFcmToken');
+  }) {
+    return dataSource.doc(userId).update({
+      FirestoreFields.fcmToken: token,
+      FirestoreFields.updatedAt: dateTimeToTimestamp(DateTime.now()),
+    });
+  }
 }
