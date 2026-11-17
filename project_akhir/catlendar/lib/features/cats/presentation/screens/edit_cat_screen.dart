@@ -76,13 +76,14 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
       if (imageUrl != null && mounted) {
         setState(() => _selectedAvatarId = imageUrl);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto kucing berhasil diunggah!')),
+          const SnackBar(
+              content: Text('The cat photo has been uploaded successfully.')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengunggah foto: $e')),
+          SnackBar(content: Text('Failed to upload cat photo: $e')),
         );
       }
     } finally {
@@ -98,17 +99,17 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
       builder: (ctx) => AlertDialog(
         title: Text('Hapus Profil ${cat.name}?'),
         content: const Text(
-          'Profil kucing dan data terkait akan dihapus permanen dan tidak bisa dikembalikan.',
+          'The cat profile and all associated medical history will be permanently deleted. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -121,7 +122,9 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
       await ref.read(catRepositoryProvider).deleteCat(cat.catId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profil ${cat.name} berhasil dihapus')),
+        SnackBar(
+            content: Text(
+                'The profile for ${cat.name} has been deleted successfully.')),
       );
       while (context.canPop()) {
         context.pop();
@@ -130,7 +133,7 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
       if (mounted) {
         setState(() => _isDeleting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menghapus profil: $e')),
+          SnackBar(content: Text('Failed to delete profile: $e')),
         );
       }
     }
@@ -215,10 +218,11 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (cat) {
           if (cat == null) {
-            return const Center(child: Text('Kucing tidak ditemukan'));
+            return const Center(
+                child: Text('The cat profile could not be found.'));
           }
           if (ownerId == null) {
-            return const Center(child: Text('Sesi tidak valid'));
+            return const Center(child: Text('The session is invalid.'));
           }
 
           if (!_initialized) {
@@ -428,11 +432,12 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
                   const SizedBox(height: 8),
                   historiesAsync.when(
                     loading: () => const CircularProgressIndicator(),
-                    error: (_, __) => const Text('Gagal memuat riwayat medis'),
+                    error: (_, __) =>
+                        const Text('Failed to load medical history.'),
                     data: (histories) {
                       if (histories.isEmpty) {
                         return const Text(
-                          'Belum ada riwayat medis tersimpan.',
+                          'No saved medical history available.',
                           style: TextStyle(color: Colors.grey),
                         );
                       }
@@ -521,7 +526,7 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
                             )
                           : const Icon(Icons.delete_outline),
                       label: Text(
-                        _isDeleting ? 'Menghapus...' : 'Delete Cat Profile',
+                        _isDeleting ? 'Deleting...' : 'Delete Cat Profile',
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),

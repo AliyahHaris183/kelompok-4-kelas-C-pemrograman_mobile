@@ -19,12 +19,12 @@ class CatSummaryScreen extends ConsumerWidget {
       next.whenOrNull(
         error: (error, stackTrace) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Gagal menyimpan: $error')));
+              .showSnackBar(SnackBar(content: Text('Failed to save: $error')));
         },
         data: (_) {
           if (previous?.isLoading == true) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Data kucing berhasil disimpan!')),
+              const SnackBar(content: Text('Cat data saved successfully!')),
             );
             context.goNamed(AppRoutes.home.name);
           }
@@ -36,7 +36,7 @@ class CatSummaryScreen extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Summary')),
         body: const Center(
-          child: Text('Tidak ada data draf untuk ditampilkan.'),
+          child: Text('No draft data available for display.'),
         ),
       );
     }

@@ -156,7 +156,7 @@ class _BreedSearchSheetState extends State<_BreedSearchSheet> {
               child: _filteredBreeds.isEmpty
                   ? const Center(
                       child: Text(
-                        'Ras kucing tidak ditemukan',
+                        'No cat breeds found.',
                         style: TextStyle(color: Colors.grey),
                       ),
                     )

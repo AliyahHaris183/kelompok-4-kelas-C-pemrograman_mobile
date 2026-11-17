@@ -84,13 +84,13 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
       if (imageUrl != null && mounted) {
         setState(() => _selectedAvatarId = imageUrl);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto kucing berhasil diunggah!')),
+          const SnackBar(content: Text('Photo uploaded successfully!')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengunggah foto: $e')),
+          const SnackBar(content: Text('Failed to upload photo.')),
         );
       }
     } finally {
@@ -205,7 +205,7 @@ class _AddCatScreenState extends ConsumerState<AddCatScreen> {
 
     if (ownerId == null) {
       return const Scaffold(
-        body: Center(child: Text('Sesi tidak valid. Silakan login kembali.')),
+        body: Center(child: Text('Invalid session. Please log in again.')),
       );
     }
 

@@ -38,7 +38,8 @@ class CatProfileScreen extends ConsumerWidget {
         error: (error, stack) => Center(child: Text('Error: $error')),
         data: (cat) {
           if (cat == null) {
-            return const Center(child: Text('Data kucing tidak ditemukan.'));
+            return const Center(
+                child: Text('The cat profile could not be found.'));
           }
 
           return SingleChildScrollView(
@@ -118,11 +119,12 @@ class CatProfileScreen extends ConsumerWidget {
                   alignment: Alignment.centerLeft,
                   child: medicalHistoryAsync.when(
                     loading: () => const CircularProgressIndicator(),
-                    error: (e, st) => const Text('Gagal memuat riwayat medis'),
+                    error: (e, st) =>
+                        const Text('Failed to load medical history.'),
                     data: (histories) {
                       if (histories.isEmpty) {
                         return const Text(
-                          'Tidak ada riwayat medis.',
+                          'No saved medical history available.',
                           style: TextStyle(color: Colors.grey),
                         );
                       }
