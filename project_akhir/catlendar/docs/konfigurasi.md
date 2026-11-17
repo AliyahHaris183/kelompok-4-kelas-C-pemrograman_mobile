@@ -33,14 +33,38 @@ Belum diputuskan. Setelah tim memilih API-nya:
    `AppConstants`.
 3. Implementasikan `HolidayApiDataSource` dan `Holiday.fromJson`.
 
-## Notifikasi (Orang 3; token FCM milik Orang 1)
+## Push notification (FCM)
 
-- Android 13 ke atas memerlukan izin runtime notifikasi.
+Token FCM perangkat disimpan otomatis di dokumen USERS (`fcm_token`) setiap
+akun yang lengkap membuka aplikasi, diperbarui saat FCM mengganti token, dan
+dihapus saat log out. Tidak ada yang perlu dilakukan di layar mana pun.
+
+Syarat untuk menguji di Android:
+
+- Emulator harus memakai system image **Google Play** atau **Google APIs**.
+  Emulator tanpa Google Play Services tidak bisa menerima FCM.
+- `AndroidManifest.xml` memuat izin notifikasi (Android 13 ke atas):
+  `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>`
+- Saat pertama kali masuk, izinkan notifikasi pada dialog yang muncul.
+
+Cara mengirim push uji:
+
+1. Login di aplikasi, lalu buka dokumen `USERS/{uid}` di Firebase Console dan
+   salin nilai `fcm_token`.
+2. Firebase Console, Messaging, Create your first campaign (atau New campaign),
+   pilih Firebase Notification messages, lalu Send test message.
+3. Tempel token tadi, lalu Test.
+4. **Minimalkan aplikasi** (tekan tombol Home) sebelum mengirim. Pesan yang
+   dikirim saat aplikasi sedang terbuka tidak tampil otomatis di Android.
+   Notifikasi akan muncul di status bar.
+
+Pengiriman otomatis dari server butuh Cloud Functions, yang tidak dipakai.
+
+## Notifikasi terjadwal (Orang 3)
+
 - Setup Android untuk `flutter_local_notifications` mengikuti dokumentasi paket
   tersebut.
 - Notifikasi terjadwal butuh paket `timezone`: `flutter pub add timezone`.
-- Uji FCM: ambil `fcm_token` dari dokumen USERS, lalu kirim pesan uji dari
-  Firebase Console (Messaging, Send test message).
 
 ## Masalah umum
 

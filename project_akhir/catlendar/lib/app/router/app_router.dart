@@ -38,7 +38,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: AppRoutes.initialLocation,
     // TODO(tim): set true untuk melihat log navigasi saat debugging.
-    debugLogDiagnostics: false,
+    debugLogDiagnostics: true,
     // Aturan akses ada di route_guard.dart.
     redirect: (context, state) => resolveRedirect(
       status: ref.read(sessionStatusProvider),
