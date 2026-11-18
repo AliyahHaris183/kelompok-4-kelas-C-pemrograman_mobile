@@ -1,22 +1,36 @@
 import 'package:flutter/material.dart';
 
 /// Maskot kucing di atas judul layar auth.
-///
-/// Ekspor ilustrasi dari Figma ke assets/images/ dan daftarkan folder tersebut
-/// di pubspec.yaml. Nama file yang dipakai:
-/// cat_login.png, cat_signup.png (juga untuk layar lain), cat_welcome.png.
-/// Selama aset belum ada, ikon cadangan ditampilkan.
+
+/// Path file diambil dari AppAssets.
+/// Jika file tidak ditemukan, ikon cadangan akan ditampilkan.
 class AuthMascot extends StatelessWidget {
   const AuthMascot({
     super.key,
     required this.assetPath,
-    this.size = 44,
+    this.size = 56,
+    this.alignment = Alignment.centerLeft,
     this.fallbackColor = Colors.black,
   });
 
   final String assetPath;
+
+  /// Kotak tempat gambar digambar.
+  /// Gambar mempertahankan proporsinya.
   final double size;
+
+  /// Posisi gambar di dalam kotak.
+  final AlignmentGeometry alignment;
+
   final Color fallbackColor;
+
+  Widget _fallback() {
+    return Icon(
+      Icons.pets,
+      size: size,
+      color: fallbackColor,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +39,13 @@ class AuthMascot extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) =>
-          Icon(Icons.pets, size: size, color: fallbackColor),
+      alignment: alignment,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('Gagal memuat gambar: $assetPath');
+        debugPrint('$error');
+
+        return _fallback();
+      },
     );
   }
 }

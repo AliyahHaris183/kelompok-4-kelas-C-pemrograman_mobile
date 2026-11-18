@@ -9,6 +9,7 @@ import 'package:catlendar/features/auth/presentation/providers/profile_controlle
 import 'package:catlendar/features/auth/presentation/providers/profile_providers.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_button.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_scaffold.dart';
+import 'package:catlendar/shared/widgets/avatar_image.dart';
 
 /// Layar 11: Ringkasan profil. Nama, tanggal lahir, gender, dan peringatan
 /// sebelum simpan. Save membuat dokumen USERS dengan onboarding_done = true.
@@ -54,8 +55,7 @@ class ProfileSummaryScreen extends ConsumerWidget {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
-          // TODO(Orang 1): tampilkan avatar preset yang dipilih (draft.avatarId).
-          const CircleAvatar(radius: 32, child: Icon(Icons.pets)),
+          Center(child: AvatarImage(avatarId: draft.avatarId, size: 96)),
           const SizedBox(height: 16),
           _SummaryRow(
             label: 'Name',

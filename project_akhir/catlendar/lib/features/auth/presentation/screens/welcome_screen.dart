@@ -44,6 +44,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             AuthMascot(
               assetPath: AppAssets.catWelcome,
               size: 64,
+              alignment: Alignment.center,
               fallbackColor: Colors.white,
             ),
             SizedBox(height: 12),

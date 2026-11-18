@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/core/constants/app_assets.dart';
-import 'package:catlendar/core/constants/avatar_presets.dart';
 import 'package:catlendar/core/constants/gender_options.dart';
 import 'package:catlendar/core/errors/app_exception.dart';
 import 'package:catlendar/core/utils/date_utils.dart';
@@ -13,12 +12,13 @@ import 'package:catlendar/core/widgets/empty_view.dart';
 import 'package:catlendar/features/auth/data/models/app_user.dart';
 import 'package:catlendar/features/auth/presentation/providers/auth_providers.dart';
 import 'package:catlendar/features/auth/presentation/providers/profile_controller.dart';
+import 'package:catlendar/features/auth/presentation/providers/profile_photo_controller.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_button.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_mascot.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_option_selector.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_text_field.dart';
-import 'package:catlendar/shared/widgets/avatar_selector.dart';
+import 'package:catlendar/features/auth/presentation/widgets/profile_photo_picker.dart';
 import 'package:catlendar/shared/widgets/confirm_dialog.dart';
 
 /// Layar 22: Edit profile (pemilik). Form sama dengan Set up profile, sudah
@@ -87,6 +87,24 @@ class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final url =
+        await ref.read(profilePhotoControllerProvider.notifier).pickAndUpload();
+    if (!mounted) return;
+
+    if (url != null) {
+      setState(() => _avatarId = url);
+      return;
+    }
+    // Null tanpa error berarti pengguna membatalkan pilihan.
+    final error = ref.read(profilePhotoControllerProvider).error;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppException.from(error).message)),
+      );
+    }
+  }
+
   Future<void> _pickDate() async {
     FocusScope.of(context).unfocus();
     final picked = await showDatePicker(
@@ -150,26 +168,29 @@ class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
   @override
   Widget build(BuildContext context) {
     final isSaving = ref.watch(profileControllerProvider).isLoading;
+    final isUploading = ref.watch(profilePhotoControllerProvider).isLoading;
 
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AuthMascot(assetPath: AppAssets.catSignup),
+          const AuthMascot(assetPath: AppAssets.catSetupSettings),
           const SizedBox(height: 8),
           const Text(
             'Edit profile',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
-          AvatarSelector(
-            avatarIds: AvatarPresets.ownerAvatarIds,
-            selectedId: _avatarId,
-            onChanged: (id) => setState(() => _avatarId = id),
-            size: 48,
+          const SizedBox(height: 20),
+          Center(
+            child: ProfilePhotoPicker(
+              avatarId: _avatarId,
+              isUploading: isUploading,
+              onChooseFromGallery: _pickPhoto,
+              onChoosePreset: (id) => setState(() => _avatarId = id),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           AuthTextField(
             controller: _nameController,
             hint: 'Name',
@@ -200,7 +221,12 @@ class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
             onChanged: (value) => setState(() => _gender = value),
           ),
           const SizedBox(height: 24),
-          AuthButton(label: 'Save', isLoading: isSaving, onPressed: _save),
+          AuthButton(
+            label: 'Save',
+            isLoading: isSaving,
+            // Tunggu unggah selesai agar URL foto ikut tersimpan.
+            onPressed: isUploading ? null : _save,
+          ),
         ],
       ),
     );

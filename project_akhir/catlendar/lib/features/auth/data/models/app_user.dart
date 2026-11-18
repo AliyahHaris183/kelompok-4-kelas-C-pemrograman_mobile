@@ -29,7 +29,8 @@ class AppUser {
   final DateTime dateOfBirth;
   final String? gender;
 
-  /// Preset avatar, bukan foto (keputusan 7.8).
+  /// Id avatar preset (mis. owner_1) ATAU URL foto Cloudinary (https://...).
+  /// Gunakan AvatarImage untuk menampilkannya. Menggeser keputusan 7.8.
   final String? avatarId;
   final bool onboardingDone;
 
