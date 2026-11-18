@@ -10,6 +10,8 @@ abstract final class AvatarPresets {
     'owner_4',
     'owner_5',
     'owner_6',
+    'owner_7',
+    'owner_8',
   ];
 
   static const List<String> catAvatarIds = [

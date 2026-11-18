@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Teks tautan kecil bergaris bawah (mis. "Forgot password?").
+/// Teks tautan bergaris bawah (mis. "Forgot password?").
 class AuthLink extends StatelessWidget {
-  const AuthLink({super.key, required this.label, required this.onPressed});
+  const AuthLink({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.fontSize = 11,
+  });
 
   final String label;
   final VoidCallback? onPressed;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +22,8 @@ class AuthLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: const TextStyle(
-          fontSize: 11,
+        textStyle: TextStyle(
+          fontSize: fontSize,
           decoration: TextDecoration.underline,
         ),
       ),

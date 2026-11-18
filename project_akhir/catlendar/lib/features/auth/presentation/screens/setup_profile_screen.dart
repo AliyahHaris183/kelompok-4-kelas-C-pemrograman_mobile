@@ -3,23 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
-import 'package:catlendar/core/constants/avatar_presets.dart';
+import 'package:catlendar/core/constants/app_assets.dart';
 import 'package:catlendar/core/constants/gender_options.dart';
+import 'package:catlendar/core/errors/app_exception.dart';
 import 'package:catlendar/core/utils/date_utils.dart';
 import 'package:catlendar/core/utils/validators.dart';
+import 'package:catlendar/features/auth/presentation/providers/profile_photo_controller.dart';
 import 'package:catlendar/features/auth/presentation/providers/profile_providers.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_button.dart';
+import 'package:catlendar/features/auth/presentation/widgets/auth_mascot.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_option_selector.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_scaffold.dart';
 import 'package:catlendar/features/auth/presentation/widgets/auth_text_field.dart';
-import 'package:catlendar/shared/widgets/avatar_selector.dart';
+import 'package:catlendar/features/auth/presentation/widgets/profile_photo_picker.dart';
 
 /// Layar 9: Set up your profile.
-/// Avatar preset, Name, Date of birth (dipilih di layar 10), Gender.
-/// Validasi: nama dan tanggal lahir wajib. Belum menulis ke Firestore.
-///
-/// TODO(Orang 1): ganti tampilan avatar bawaan (ikon) dengan aset avatar
-/// dari Figma lewat parameter avatarBuilder pada AvatarSelector.
+/// Foto profil (galeri atau avatar preset), Name, Date of birth (dipilih di
+/// layar 10), Gender. Validasi: nama dan tanggal lahir wajib. Belum menulis ke
+/// Firestore; foto diunggah ke Cloudinary saat dipilih, dan URL-nya disimpan
+/// di draft sampai tombol Save di layar Ringkasan.
 class SetupProfileScreen extends ConsumerStatefulWidget {
   const SetupProfileScreen({super.key});
 
@@ -50,6 +52,24 @@ class _SetupProfileScreenState extends ConsumerState<SetupProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickPhoto() async {
+    final url =
+        await ref.read(profilePhotoControllerProvider.notifier).pickAndUpload();
+    if (!mounted) return;
+
+    if (url != null) {
+      ref.read(profileDraftProvider.notifier).setAvatar(url);
+      return;
+    }
+    // Null tanpa error berarti pengguna membatalkan pilihan.
+    final error = ref.read(profilePhotoControllerProvider).error;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppException.from(error).message)),
+      );
+    }
+  }
+
   void _continue() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusScope.of(context).unfocus();
@@ -65,6 +85,7 @@ class _SetupProfileScreenState extends ConsumerState<SetupProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(profileDraftProvider);
+    final isUploading = ref.watch(profilePhotoControllerProvider).isLoading;
 
     // Sinkronkan teks tanggal saat layar Date of birth mengubah draft.
     ref.listen<ProfileDraft>(profileDraftProvider, (previous, next) {
@@ -77,18 +98,22 @@ class _SetupProfileScreenState extends ConsumerState<SetupProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AuthMascot(assetPath: AppAssets.catSetupSettings),
+            const SizedBox(height: 8),
             const Text(
               'Set up your profile',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 16),
-            AvatarSelector(
-              avatarIds: AvatarPresets.ownerAvatarIds,
-              selectedId: draft.avatarId,
-              onChanged: ref.read(profileDraftProvider.notifier).setAvatar,
-              size: 48,
+            const SizedBox(height: 20),
+            Center(
+              child: ProfilePhotoPicker(
+                avatarId: draft.avatarId,
+                isUploading: isUploading,
+                onChooseFromGallery: _pickPhoto,
+                onChoosePreset: ref.read(profileDraftProvider.notifier).setAvatar,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             AuthTextField(
               controller: _nameController,
               hint: 'Name',
@@ -118,7 +143,11 @@ class _SetupProfileScreenState extends ConsumerState<SetupProfileScreen> {
               onChanged: ref.read(profileDraftProvider.notifier).setGender,
             ),
             const SizedBox(height: 24),
-            AuthButton(label: 'Continue', onPressed: _continue),
+            AuthButton(
+              label: 'Continue',
+              // Tunggu unggah selesai agar URL foto ikut tersimpan di draft.
+              onPressed: isUploading ? null : _continue,
+            ),
           ],
         ),
       ),

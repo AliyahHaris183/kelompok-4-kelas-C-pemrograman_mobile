@@ -39,11 +39,14 @@ class FirebaseMessagingFcmService implements FcmService {
   }
 
   @override
+  // ignore: deprecated_member_use
   Future<String?> getToken() => messaging.getToken();
 
   @override
+  // ignore: deprecated_member_use
   Stream<String> get onTokenRefresh => messaging.onTokenRefresh;
 
   @override
+  // ignore: deprecated_member_use
   Future<void> deleteToken() => messaging.deleteToken();
 }

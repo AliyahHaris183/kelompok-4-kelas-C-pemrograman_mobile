@@ -1,18 +1,30 @@
 /// Path aset gambar. Satu-satunya tempat nama file ditulis.
 ///
-/// File gambarnya harus ada di folder assets/images/ (sejajar dengan lib/),
-/// dan folder itu harus terdaftar di pubspec.yaml. Lihat docs/aset_gambar.md.
-/// Jika file belum ada, aplikasi tetap jalan dan menampilkan ikon cadangan.
+/// File ada di folder assets/images/ (sejajar dengan lib/) dan harus terdaftar
+/// di pubspec.yaml. Lihat docs/aset_gambar.md.
 abstract final class AppAssets {
   static const String _images = 'assets/images';
+  static const String _avatars = '$_images/avatars';
 
-  /// Kucing hitam, layar Log in.
+  /// Kucing layar Log in.
   static const String catLogin = '$_images/cat_login.png';
 
-  /// Kucing belang merah muda. Dipakai di Sign up, Create password, Forgot
-  /// password, Verifikasi email, Settings, Edit profile, dan Change password.
+  /// Kucing layar Sign up. Juga dipakai di Create password, Forgot password,
+  /// dan Verifikasi email.
   static const String catSignup = '$_images/cat_signup.png';
 
-  /// Kucing tutul putih, layar Welcome.
+  /// Kucing layar Set up profile dan Settings. Juga dipakai di Edit profile
+  /// dan Change password.
+  static const String catSetupSettings = '$_images/cat_setup_settings.png';
+
+  /// Kucing layar Welcome to Catlendar.
   static const String catWelcome = '$_images/cat_welcome.png';
+
+  /// Kucing layar Greeting (Good to see you back).
+  static const String catGoodToSeeYouBack =
+      '$_images/cat_good_to_see_you_back.png';
+
+  /// Gambar avatar preset untuk sebuah avatar_id (mis. owner_1).
+  /// File: assets/images/avatars/avatar_id.png
+  static String avatar(String avatarId) => '$_avatars/$avatarId.png';
 }

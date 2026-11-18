@@ -24,6 +24,34 @@ di [firestore_rules_testing.md](firestore_rules_testing.md).
 
 `env.json` ada di `.gitignore`. Jangan di-commit.
 
+## Foto profil (Cloudinary)
+
+Foto profil diambil dari galeri dan diunggah ke Cloudinary (Firebase Storage
+tidak dipakai karena butuh billing). URL hasil unggah disimpan di
+`USERS.avatar_id`, yang kini bisa berisi **id avatar preset** (mis. `owner_1`)
+**atau URL foto** (`https://...`). Tampilkan dengan `AvatarImage`
+(`lib/shared/widgets/avatar_image.dart`), yang mengenali keduanya.
+
+Konfigurasi, di `env.json` masing-masing (jangan di-commit):
+
+```json
+{
+  "CLOUDINARY_CLOUD_NAME": "isi-cloud-name",
+  "CLOUDINARY_UPLOAD_PRESET": "isi-upload-preset"
+}
+```
+
+- Upload preset di dashboard Cloudinary harus bertipe **Unsigned**.
+- Batasi preset (format gambar, ukuran maksimum, folder) agar tidak
+  disalahgunakan, karena nama cloud dan preset ikut tertanam di aplikasi.
+- Paket `image_picker` dibutuhkan. Jika belum ada di `pubspec.yaml`, jalankan
+  `flutter pub add image_picker`.
+- Unggah memakai `imageUploaderProvider` (`core/providers/media_providers.dart`).
+  Fitur lain yang butuh unggah foto (mis. foto kucing) memakai provider yang
+  sama, bukan membuat pengunggah sendiri.
+- Gambar yang sudah diunggah tidak ikut terhapus bila pengguna mengganti foto.
+  Itu batasan unggah tanpa tanda tangan (unsigned).
+
 ## Holiday Indonesia API (Orang 3)
 
 Belum diputuskan. Setelah tim memilih API-nya:

@@ -88,7 +88,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AuthMascot(assetPath: AppAssets.catSignup),
+            const AuthMascot(assetPath: AppAssets.catSetupSettings),
             const SizedBox(height: 8),
             const Text(
               'Change password',
