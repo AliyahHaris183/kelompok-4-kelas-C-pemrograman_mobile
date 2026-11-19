@@ -438,7 +438,7 @@ class _CatFactCardState extends ConsumerState<_CatFactCard> {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'Cat Fact',
+                      'MeowFacts!',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
