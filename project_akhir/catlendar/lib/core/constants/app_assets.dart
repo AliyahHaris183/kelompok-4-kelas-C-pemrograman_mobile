@@ -27,4 +27,10 @@ abstract final class AppAssets {
   /// Gambar avatar preset untuk sebuah avatar_id (mis. owner_1).
   /// File: assets/images/avatars/avatar_id.png
   static String avatar(String avatarId) => '$_avatars/$avatarId.png';
+
+  /// Kucing layar Home (bagian daftar kucing).
+  static const String catHomeMembers = '$_images/cat_home_members.png';
+
+  /// Kucing layar Home (bagian pengingat kalender).
+  static const String catHomeCalendar = '$_images/cat_home_calendar.png';
 }

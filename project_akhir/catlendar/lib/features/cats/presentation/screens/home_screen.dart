@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
+import 'package:catlendar/core/constants/app_assets.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
 import 'package:catlendar/features/auth/presentation/providers/auth_providers.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
@@ -143,12 +144,13 @@ class HomeScreen extends ConsumerWidget {
               // 2. KARTU CAT FACT (Tap untuk ganti & otomatis berganti tiap 18 detik)
               const _CatFactCard(),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // 3. BAGIAN KUCING: Judul & Carousel Avatar Kucing
-              const Row(
+              // 3. BAGIAN KUCING: Judul + Maskot Kucing & Carousel Avatar
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: Text(
                       'Take a look on your members',
                       style: TextStyle(
@@ -157,7 +159,17 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  Icon(Icons.pets, color: Colors.redAccent, size: 28),
+                  const SizedBox(width: 8),
+                  Image.asset(
+                    AppAssets.catHomeMembers,
+                    height: 58,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.pets,
+                      color: Colors.redAccent,
+                      size: 28,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -174,33 +186,47 @@ class HomeScreen extends ConsumerWidget {
                       scrollDirection: Axis.horizontal,
                       itemCount: cats.length + 1, // +1 untuk tombol Add
                       itemBuilder: (context, index) {
-                        // Tombol Add di ujung kanan carousel
+                        // Tombol Add kapsul hitam di ujung kanan carousel (sesuai Figma)
                         if (index == cats.length) {
                           return Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(36),
+                            padding:
+                                const EdgeInsets.only(left: 4.0, top: 14.0),
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Material(
+                                color: const Color(0xFF1E1E1E),
+                                borderRadius: BorderRadius.circular(24),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(24),
                                   onTap: () =>
                                       context.pushNamed(AppRoutes.addCat.name),
-                                  child: const CircleAvatar(
-                                    radius: 36,
-                                    backgroundColor: Colors.black,
-                                    child: Icon(
-                                      Icons.add,
-                                      color: Colors.white,
-                                      size: 32,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.add_circle_outline,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Add',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Add',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         }
@@ -242,17 +268,37 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
 
-              // 4. KARTU PENGINGAT KALENDER
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    color: Colors.orange,
-                    size: 36,
+              // Garis pemisah tipis di bawah daftar kucing (sesuai Figma)
+              Center(
+                child: Container(
+                  width: 140,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(width: 12),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 4. KARTU PENGINGAT KALENDER + Maskot Kucing Oranye
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    AppAssets.catHomeCalendar,
+                    height: 58,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.calendar_today,
+                      color: Colors.orange,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       "Don't Forget to check your calendar, $userName!",
@@ -266,7 +312,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // Pratinjau Kalender menuju Layar Calendar (Orang 3)
+              // Pratinjau Kalender menuju Layar Calendar
               InkWell(
                 onTap: () => context.pushNamed(AppRoutes.calendar.name),
                 borderRadius: BorderRadius.circular(16),
