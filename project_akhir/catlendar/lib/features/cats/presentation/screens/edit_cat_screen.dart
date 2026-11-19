@@ -97,7 +97,7 @@ class _EditCatScreenState extends ConsumerState<EditCatScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Hapus Profil ${cat.name}?'),
+        title: Text('Delete Profile ${cat.name}?'),
         content: const Text(
           'The cat profile and all associated medical history will be permanently deleted. This action cannot be undone.',
         ),
