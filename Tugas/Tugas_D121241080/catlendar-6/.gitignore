@@ -1,0 +1,22 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+*.log
+
+# Kredensial dan konfigurasi Firebase: JANGAN di-commit tanpa keputusan tim
+# (lihat docs/firebase_setup.md). Hapus baris ini hanya jika tim memutuskan
+# menyimpan konfigurasi di repository.
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.env
+
+env.json
+

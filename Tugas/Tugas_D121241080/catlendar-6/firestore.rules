@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(ownerId) {
+      return signedIn() && request.auth.uid == ownerId;
+    }
+
+    // USERS: hanya pemilik dokumen (uid = ID dokumen). Tanpa delete.
+    match /USERS/{userId} {
+      allow read, create, update: if signedIn() && request.auth.uid == userId;
+    }
+
+    // CATS: hanya pemilik (owner_id). owner_id tidak boleh diubah ke uid lain.
+    match /CATS/{catId} {
+      allow read, delete: if isOwner(resource.data.owner_id);
+      allow create: if isOwner(request.resource.data.owner_id);
+      allow update: if isOwner(resource.data.owner_id)
+                    && isOwner(request.resource.data.owner_id);
+    }
+
+    // MEDICAL_HISTORY: hanya pemilik (owner_id).
+    match /MEDICAL_HISTORY/{historyId} {
+      allow read, delete: if isOwner(resource.data.owner_id);
+      allow create: if isOwner(request.resource.data.owner_id);
+      allow update: if isOwner(resource.data.owner_id)
+                    && isOwner(request.resource.data.owner_id);
+    }
+
+    // CARE_RECORD adalah log: hanya read dan create. Tanpa update dan delete.
+    match /CARE_RECORD/{careRecordId} {
+      allow read: if isOwner(resource.data.owner_id);
+      allow create: if isOwner(request.resource.data.owner_id);
+    }
+
+    // SCHEDULE: hanya pemilik (owner_id).
+    match /SCHEDULE/{scheduleId} {
+      allow read, delete: if isOwner(resource.data.owner_id);
+      allow create: if isOwner(request.resource.data.owner_id);
+      allow update: if isOwner(resource.data.owner_id)
+                    && isOwner(request.resource.data.owner_id);
+    }
+
+    // Semua koleksi lain ditolak.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
