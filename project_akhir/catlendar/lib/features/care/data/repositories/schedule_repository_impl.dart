@@ -1,52 +1,77 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:catlendar/core/constants/firestore_fields.dart';
 import 'package:catlendar/features/care/data/datasources/schedule_firestore_data_source.dart';
 import 'package:catlendar/features/care/data/models/care_type.dart';
 import 'package:catlendar/features/care/data/models/schedule.dart';
 import 'package:catlendar/features/care/domain/repositories/schedule_repository.dart';
 
-/// Scaffold. Hanya newId() yang berfungsi. Sisanya TODO Orang 3.
+/// Implementasi SCHEDULE di Firestore. Semua query memuat owner_id (Security Rules).
 class ScheduleRepositoryImpl implements ScheduleRepository {
   ScheduleRepositoryImpl(this.dataSource);
 
   final ScheduleFirestoreDataSource dataSource;
 
+  CollectionReference<Map<String, dynamic>> get _col => dataSource.collection;
+
   @override
   String newId() => dataSource.newId();
 
-  // TODO(Orang 3): where owner_id == ownerId (untuk kalender dan Summary).
   @override
-  Stream<List<Schedule>> watchSchedulesByOwner(String ownerId) =>
-      throw UnimplementedError('TODO(Orang 3): watchSchedulesByOwner');
+  Stream<List<Schedule>> watchSchedulesByOwner(String ownerId) {
+    return _col
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .snapshots()
+        .map((snap) => _mapDocs(snap.docs));
+  }
 
-  // TODO(Orang 3): where owner_id == ownerId DAN cat_id == catId.
   @override
   Stream<List<Schedule>> watchSchedulesByCat({
     required String ownerId,
     required String catId,
-  }) =>
-      throw UnimplementedError('TODO(Orang 3): watchSchedulesByCat');
+  }) {
+    return _col
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .where(FirestoreFields.catId, isEqualTo: catId)
+        .snapshots()
+        .map((snap) => _mapDocs(snap.docs));
+  }
 
-  // TODO(Orang 3): cari jadwal sejenis (cat_id + care_type [+ custom_name]).
   @override
   Future<Schedule?> getSchedule({
     required String ownerId,
     required String catId,
     required CareType careType,
     String? customName,
-  }) =>
-      throw UnimplementedError('TODO(Orang 3): getSchedule');
+  }) async {
+    final snap = await _col
+        .where(FirestoreFields.ownerId, isEqualTo: ownerId)
+        .where(FirestoreFields.catId, isEqualTo: catId)
+        .where(FirestoreFields.careType, isEqualTo: careType.value)
+        .where(FirestoreFields.customName, isEqualTo: customName)
+        .get();
+    final matches = _mapDocs(snap.docs);
+    for (final schedule in matches) {
+      if (schedule.isActive) return schedule;
+    }
+    return matches.isEmpty ? null : matches.first;
+  }
 
-  // TODO(Orang 3): set dokumen baru.
   @override
   Future<void> createSchedule(Schedule schedule) =>
-      throw UnimplementedError('TODO(Orang 3): createSchedule');
+      _col.doc(schedule.scheduleId).set(schedule.toMap());
 
-  // TODO(Orang 3): update dengan updated_at baru.
   @override
   Future<void> updateSchedule(Schedule schedule) =>
-      throw UnimplementedError('TODO(Orang 3): updateSchedule');
+      _col.doc(schedule.scheduleId).set(schedule.toMap());
 
-  // TODO(Orang 3): hapus dokumen (diizinkan Security Rules).
   @override
   Future<void> deleteSchedule(String scheduleId) =>
-      throw UnimplementedError('TODO(Orang 3): deleteSchedule');
+      _col.doc(scheduleId).delete();
+
+  List<Schedule> _mapDocs(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final schedules = docs.map(Schedule.fromFirestore).toList();
+    schedules.sort((a, b) => a.nextDate.compareTo(b.nextDate));
+    return schedules;
+  }
 }

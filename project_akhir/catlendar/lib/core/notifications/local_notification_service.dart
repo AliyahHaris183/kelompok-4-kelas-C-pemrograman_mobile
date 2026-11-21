@@ -1,4 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 /// Kontrak pengingat lokal terjadwal (milik Orang 3).
 ///
@@ -10,8 +14,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 abstract class LocalNotificationService {
   Future<void> initialize();
 
+  /// Meminta izin notifikasi (Android 13 ke atas). True jika diizinkan.
+  Future<bool> requestPermission();
+
   /// [localNotificationId] adalah nilai yang disimpan di SCHEDULE.local_notification_id.
-  Future<void> scheduleReminder({
+  /// Mengembalikan false jika [scheduledAt] sudah lewat dan tidak dijadwalkan.
+  Future<bool> scheduleReminder({
     required String localNotificationId,
     required DateTime scheduledAt,
     required String title,
@@ -19,34 +27,112 @@ abstract class LocalNotificationService {
   });
 
   Future<void> cancelReminder(String localNotificationId);
+
+  /// Membuat local_notification_id baru (string berisi int 1..2^31-2).
+  String newNotificationId();
 }
 
-/// Scaffold implementasi flutter_local_notifications. Belum berfungsi.
+/// Implementasi flutter_local_notifications.
+///
+/// Pemetaan ID: ERD memakai string, plugin memakai int. local_notification_id
+/// disimpan sebagai string dari int acak yang unik, lalu di-parse kembali ke int
+/// saat dibatalkan. Dengan begitu tidak perlu tabel pemetaan tambahan.
 class FlutterLocalNotificationService implements LocalNotificationService {
   FlutterLocalNotificationService({FlutterLocalNotificationsPlugin? plugin})
       : plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin plugin;
 
-  // TODO(Orang 3): inisialisasi plugin (pengaturan Android/iOS), inisialisasi
-  // timezone (tambahkan paket `timezone` via `flutter pub add timezone`),
-  // minta izin notifikasi, lalu implementasikan zonedSchedule.
-  // Catatan: plugin memakai id int, sedangkan ERD memakai string. Tentukan satu
-  // pemetaan string -> int yang konsisten dan dokumentasikan.
-  @override
-  Future<void> initialize() =>
-      throw UnimplementedError('TODO(Orang 3): inisialisasi notifikasi lokal');
+  static const String _channelId = 'care_reminders';
+  static const String _channelName = 'Pengingat perawatan';
+  static final Random _random = Random.secure();
+
+  bool _initialized = false;
+  tz.Location? _utc;
 
   @override
-  Future<void> scheduleReminder({
+  Future<void> initialize() async {
+    if (_initialized) return;
+
+    tzdata.initializeTimeZones();
+    _utc = tz.getLocation('UTC');
+
+    await plugin.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+      ),
+    );
+
+    final android = plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        importance: Importance.high,
+      ),
+    );
+
+    _initialized = true;
+  }
+
+  @override
+  Future<bool> requestPermission() async {
+    final android = plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final granted = await android?.requestNotificationsPermission();
+    return granted ?? true;
+  }
+
+  @override
+  Future<bool> scheduleReminder({
     required String localNotificationId,
     required DateTime scheduledAt,
     required String title,
     required String body,
-  }) =>
-      throw UnimplementedError('TODO(Orang 3): jadwalkan notifikasi lokal');
+  }) async {
+    if (!scheduledAt.isAfter(DateTime.now())) return false;
+
+    final id = int.tryParse(localNotificationId);
+    if (id == null) {
+      throw ArgumentError('local_notification_id harus berisi angka: $localNotificationId');
+    }
+
+    // zonedSchedule memakai instan waktu (epoch), jadi representasi UTC sudah
+    // menunjuk momen yang benar untuk perangkat di zona mana pun.
+    final when = tz.TZDateTime.fromMillisecondsSinceEpoch(
+      _utc ?? tz.getLocation('UTC'),
+      scheduledAt.toUtc().millisecondsSinceEpoch,
+    );
+
+    await plugin.zonedSchedule(
+      id: id,
+      scheduledDate: when,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      // inexact: tidak butuh izin alarm persis (SCHEDULE_EXACT_ALARM).
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+    return true;
+  }
 
   @override
-  Future<void> cancelReminder(String localNotificationId) =>
-      throw UnimplementedError('TODO(Orang 3): batalkan notifikasi lokal');
+  Future<void> cancelReminder(String localNotificationId) async {
+    final id = int.tryParse(localNotificationId);
+    if (id == null) return;
+    await plugin.cancel(id: id);
+  }
+
+  @override
+  String newNotificationId() => (_random.nextInt(0x7FFFFFFE) + 1).toString();
 }

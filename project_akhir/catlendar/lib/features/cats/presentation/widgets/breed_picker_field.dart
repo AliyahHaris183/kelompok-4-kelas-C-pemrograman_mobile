@@ -43,8 +43,8 @@ class BreedPickerField extends StatelessWidget {
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: 'Breed *',
-              border: const OutlineInputBorder(),
-              suffixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.pets_outlined, size: 18),
+              suffixIcon: const Icon(Icons.search, size: 18),
               errorText: state.errorText,
             ),
             child: Text(

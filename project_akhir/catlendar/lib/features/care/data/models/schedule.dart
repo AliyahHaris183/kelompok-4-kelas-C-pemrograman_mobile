@@ -7,6 +7,10 @@ import 'package:catlendar/features/care/data/models/reminder_option.dart';
 
 /// Entitas SCHEDULE: jadwal BERIKUTNYA, satu per jenis perawatan per kucing.
 /// Dokumen ini boleh diperbarui.
+///
+/// is_active = true berarti jadwal masih akan datang (status "scheduled").
+/// is_active = false berarti selesai (ada baris CARE_RECORD) atau dibatalkan.
+/// ERD tidak punya kolom status terpisah; lihat catatan di docs/catatan_orang3.md.
 class Schedule {
   const Schedule({
     required this.scheduleId,
@@ -29,14 +33,38 @@ class Schedule {
   /// Diisi jika careType == CareType.custom.
   final String? customName;
 
-  /// Tidak boleh sebelum tanggal terakhir (divalidasi di layar/ repository).
+  /// Tidak boleh sebelum tanggal terakhir dan tidak boleh sebelum hari ini.
   final DateTime nextDate;
   final ReminderOption reminderOption;
 
-  /// Untuk membatalkan notifikasi lokal lama. Null jika tidak ada pengingat.
+  /// ID string untuk membatalkan notifikasi lokal lama. Null jika tidak ada pengingat aktif.
   final String? localNotificationId;
   final bool isActive;
   final DateTime updatedAt;
+
+  Schedule copyWith({
+    DateTime? nextDate,
+    ReminderOption? reminderOption,
+    String? localNotificationId,
+    bool clearLocalNotificationId = false,
+    bool? isActive,
+    DateTime? updatedAt,
+  }) {
+    return Schedule(
+      scheduleId: scheduleId,
+      catId: catId,
+      ownerId: ownerId,
+      careType: careType,
+      customName: customName,
+      nextDate: nextDate ?? this.nextDate,
+      reminderOption: reminderOption ?? this.reminderOption,
+      localNotificationId: clearLocalNotificationId
+          ? null
+          : (localNotificationId ?? this.localNotificationId),
+      isActive: isActive ?? this.isActive,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   factory Schedule.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();

@@ -17,8 +17,8 @@ abstract final class AppConstants {
         'live_a8WBvWVXV7V38TFyKk2WOQ66GpH1wzfIwflml5r0CKmyqRq6dRUSSQEPz2d5lbPa',
   );
 
-  /// Holiday Indonesia API.
-  /// TODO(Orang 3): isi setelah tim mengonfirmasi API, lisensi, dan batas
-  /// pemakaiannya (keputusan 7.9). Sengaja dikosongkan, tidak ditebak.
-  static const String holidayApiBaseUrl = '';
+  /// Holiday Indonesia API (open source, lisensi MIT, endpoint /holidays/:year).
+  /// Masih menunggu konfirmasi dosen (OI-02) dan verifikasi cakupan tahun (OI-01).
+  static const String holidayApiBaseUrl =
+      'https://indonesian-holidays.ahrulsyamil.com';
 }

@@ -86,7 +86,7 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -315,29 +315,33 @@ class HomeScreen extends ConsumerWidget {
               // Pratinjau Kalender menuju Layar Calendar
               InkWell(
                 onTap: () => context.pushNamed(AppRoutes.calendar.name),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 child: Container(
-                  height: 200,
+                  height: 180,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFD0D0D0)),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.calendar_month_outlined,
+                        size: 32,
+                        color: Color(0xFF111111),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Tap to open Calendar',
+                        style: TextStyle(
+                          color: Color(0xFF6B6B6B),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'Tap to open Calendar',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
                 ),
               ),
