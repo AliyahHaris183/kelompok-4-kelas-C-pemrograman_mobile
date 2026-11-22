@@ -1,0 +1,41 @@
+name: catlendar
+description: "Aplikasi untuk pemilik kucing: profil kucing, riwayat medis, riwayat perawatan, jadwal, kalender, dan pengingat."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management (satu-satunya) dan navigasi
+  flutter_riverpod: ^3.5.0
+  go_router: ^18.1.4
+
+  # Firebase (Auth, Firestore, FCM)
+  firebase_core: ^5.1.0
+  firebase_auth: ^7.0.1
+  cloud_firestore: ^7.1.0
+  firebase_messaging: ^17.0.1
+
+  # Pengingat terjadwal di perangkat
+  flutter_local_notifications: ^23.0.2
+
+  # Klien HTTP untuk TheCatAPI dan Holiday Indonesia API
+  http: ^1.2.2
+
+  # Ambil foto dari galeri HP
+  image_picker: ^1.1.2
+  google_fonts: ^6.3.3
+  timezone: ^0.11.2
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
