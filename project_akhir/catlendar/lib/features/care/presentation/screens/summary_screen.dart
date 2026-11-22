@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:catlendar/app/router/app_routes.dart';
 import 'package:catlendar/features/care/presentation/providers/care_providers.dart';
 import 'package:catlendar/features/care/presentation/theme/care_theme.dart';
 import 'package:catlendar/features/care/presentation/utils/summary_builder.dart';
@@ -8,14 +10,9 @@ import 'package:catlendar/features/care/presentation/widgets/care_summary_list.d
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
 
 /// Layar 20: Summary.
-///
-/// Dikelompokkan per tanggal. Setiap entri: jenis perawatan dengan label Last
-/// (riwayat, CARE_RECORD) atau Next (jadwal, SCHEDULE), avatar dan nama kucing,
-/// serta tanggal. catId opsional: jika ada, hanya tampilkan kucing tersebut.
 class SummaryScreen extends ConsumerWidget {
   const SummaryScreen({super.key, this.catId});
 
-  /// Opsional.
   final String? catId;
 
   @override
@@ -47,7 +44,20 @@ class SummaryScreen extends ConsumerWidget {
     return Theme(
       data: CareTheme.of(context),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Summary')),
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Kembali',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.home.path);
+              }
+            },
+          ),
+          title: const Text('Summary'),
+        ),
         body: SafeArea(child: body),
       ),
     );

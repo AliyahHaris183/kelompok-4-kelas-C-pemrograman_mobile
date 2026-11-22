@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
-
 import 'package:catlendar/core/utils/date_utils.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
 import 'package:catlendar/features/care/data/models/holiday.dart';
@@ -149,6 +148,7 @@ class _SummaryTile extends StatelessWidget {
       onTap: onAction == null ? null : () => onAction!(ScheduleAction.edit),
       leading: CatAvatar(
         avatarId: entry.avatarId,
+        catColor: entry.catColor,
         radius: 22,
         fallbackName: entry.catName,
       ),

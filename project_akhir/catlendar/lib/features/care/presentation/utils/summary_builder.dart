@@ -18,6 +18,7 @@ class SummaryEntry {
     required this.catId,
     required this.catName,
     this.avatarId,
+    this.catColor,
     this.schedule,
     this.overdue = false,
   });
@@ -29,6 +30,7 @@ class SummaryEntry {
   final String catId;
   final String catName;
   final String? avatarId;
+  final String? catColor;
 
   /// Terisi untuk entri Next, agar layar bisa menyelesaikan atau membatalkannya.
   final Schedule? schedule;
@@ -68,6 +70,7 @@ List<SummaryEntry> buildSummaryEntries({
         catId: cat.catId,
         catName: cat.name,
         avatarId: cat.avatarId,
+        catColor: cat.color,
         schedule: schedule,
         overdue: schedule.nextDate.isBefore(today),
       ),
@@ -87,6 +90,7 @@ List<SummaryEntry> buildSummaryEntries({
         catId: cat.catId,
         catName: cat.name,
         avatarId: cat.avatarId,
+        catColor: cat.color,
       ),
     );
   }

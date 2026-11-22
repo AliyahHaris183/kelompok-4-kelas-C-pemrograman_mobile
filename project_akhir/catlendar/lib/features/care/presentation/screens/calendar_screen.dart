@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
-
 import 'package:catlendar/core/utils/date_utils.dart';
 import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
@@ -15,14 +14,9 @@ import 'package:catlendar/features/care/presentation/widgets/care_summary_list.d
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
 
 /// Layar 19: Do you keep everything on track? (kalender bulanan).
-///
-/// Avatar kucing pada tanggal berjadwal atau berisi riwayat. Tanggal hari libur
-/// ditandai. Ketuk tanggal untuk melihat aktivitasnya. catId opsional: jika ada,
-/// tampilkan kalender satu kucing.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key, this.catId});
 
-  /// Opsional.
   final String? catId;
 
   @override
@@ -42,6 +36,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     });
   }
 
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home.path);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Theme(data: CareTheme.of(context), child: _body(context));
@@ -56,7 +58,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     if (schedules.hasError || records.hasError || cats.hasError) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Calendar')),
+        appBar: AppBar(
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
+          title: const Text('Calendar'),
+        ),
         body: const Center(child: Text('Kalender belum bisa dimuat.')),
       );
     }
@@ -65,15 +70,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final catList = cats.value;
     if (scheduleList == null || recordList == null || catList == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Calendar')),
+        appBar: AppBar(
+          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
+          title: const Text('Calendar'),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    final catById = {for (final c in catList) c.catId: c};
     final catId = widget.catId;
     final title = catId == null
         ? 'Do you keep everything on track?'
-        : "${_catName(catList, catId) ?? 'Kucing'}'s calendar";
+        : "${catById[catId]?.name ?? 'Kucing'}'s calendar";
 
     final allEntries = buildSummaryEntries(
       schedules: scheduleList,
@@ -103,7 +112,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final cellCount = ((leading + daysInMonth) / 7).ceil() * 7;
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Kembali',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _handleBack,
+        ),
+        title: Text(title),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addSchedule(catList),
         backgroundColor: CareTheme.ink,
@@ -221,7 +237,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             children: [
                               for (final entry in dayEntries.take(3))
                                 CatAvatar(
-                                  avatarId: entry.avatarId,
+                                  avatarId: catById[entry.catId]?.avatarId ?? entry.avatarId,
+                                  catColor: catById[entry.catId]?.color ?? entry.catColor,
                                   radius: 7,
                                   fallbackName: entry.catName,
                                 ),
@@ -263,7 +280,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  /// Tambah jadwal: langsung untuk kucing terpilih, atau pilih kucing dulu.
   void _addSchedule(List<Cat> cats) {
     final catId = widget.catId;
     if (catId != null) {
@@ -290,7 +306,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             for (final cat in cats)
               ListTile(
-                leading: CatAvatar(avatarId: cat.avatarId, radius: 18, fallbackName: cat.name),
+                leading: CatAvatar(
+                  avatarId: cat.avatarId,
+                  catColor: cat.color,
+                  radius: 18,
+                  fallbackName: cat.name,
+                ),
                 title: Text(cat.name),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
@@ -304,12 +325,5 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
       ),
     );
-  }
-
-  String? _catName(List<Cat> cats, String catId) {
-    for (final cat in cats) {
-      if (cat.catId == catId) return cat.name;
-    }
-    return null;
   }
 }
