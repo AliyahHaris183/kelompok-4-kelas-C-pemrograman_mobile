@@ -26,14 +26,10 @@ dependencies:
   # Klien HTTP untuk TheCatAPI dan Holiday Indonesia API
   http: ^1.2.2
 
-  # Waktu terjadwal untuk flutter_local_notifications (Orang 3)
-  timezone: ^0.11.2
-
-  # Font Poppins untuk layar Care (sesuai desain)
-  google_fonts: ^6.2.1
-
   # Ambil foto dari galeri HP
   image_picker: ^1.1.2
+  google_fonts: ^6.3.3
+  timezone: ^0.11.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

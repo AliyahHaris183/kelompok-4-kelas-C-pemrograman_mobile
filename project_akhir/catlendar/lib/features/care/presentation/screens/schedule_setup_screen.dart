@@ -16,10 +16,6 @@ import 'package:catlendar/features/care/presentation/widgets/care_date_field.dar
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
 
 /// Layar 18: Let's schedule your cat's next grooming session!
-///
-/// Next bath, flea, fungal, vet visit, vaccination, custom event. Pilihan pengingat
-/// berlaku untuk semua jadwal di layar ini. Save menulis SCHEDULE dan menjadwalkan
-/// notifikasi lokal. Tanggal hari libur memunculkan peringatan, tetapi tetap bisa disimpan (FR-62).
 class ScheduleSetupScreen extends ConsumerStatefulWidget {
   const ScheduleSetupScreen({super.key, required this.catId});
 
@@ -60,7 +56,6 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _prefill());
   }
 
-  /// Mengisi form dengan jadwal aktif yang sudah ada, agar bisa diubah.
   Future<void> _prefill() async {
     final existing = await ref.read(schedulesByCatProvider(widget.catId).future);
     if (!mounted) return;
@@ -91,6 +86,14 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
 
   void _snack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home.path);
+    }
   }
 
   Future<void> _save(String catName) async {
@@ -134,11 +137,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
             '$remindersScheduled pengingat dijadwalkan.',
         ];
         _snack(notes.join(' '));
-        context.go(
-          AppRoutes.calendar.location(
-            queryParameters: {AppRoutes.catIdQuery: widget.catId},
-          ),
-        );
+        _handleBack();
       case ScheduleInvalid(:final messages):
         _snack(messages.join('\n'));
       case ScheduleFailed(:final message):
@@ -146,7 +145,6 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
     }
   }
 
-  /// Peringatan informatif bila tanggal jatuh pada hari libur (FR-62).
   Widget _holidayNotice(DateTime? date) {
     if (date == null) return const SizedBox.shrink();
     final holidays = ref.watch(holidaysProvider(date.year));
@@ -182,7 +180,13 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
     final catName = cat?.name ?? 'kucing';
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Kembali',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _handleBack,
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -196,7 +200,14 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Center(child: CatAvatar(avatarId: cat?.avatarId, radius: 50, fallbackName: cat?.name)),
+            Center(
+              child: CatAvatar(
+                avatarId: cat?.avatarId,
+                catColor: cat?.color,
+                radius: 50,
+                fallbackName: cat?.name,
+              ),
+            ),
             Center(
               child: TextButton(
                 onPressed: () => context.push(

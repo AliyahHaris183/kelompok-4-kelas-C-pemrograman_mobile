@@ -308,7 +308,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       await tester.tap(find.text('Edit profile picture'));
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(find.text('Choose from gallery'), findsNothing);
     });
   });
