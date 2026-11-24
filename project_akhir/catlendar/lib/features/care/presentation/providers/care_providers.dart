@@ -3,26 +3,26 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:catlendar/core/errors/app_exception.dart';
+import 'package:catlendar/core/notifications/local_notification_service.dart';
 import 'package:catlendar/core/providers/firebase_providers.dart';
 import 'package:catlendar/core/providers/http_provider.dart';
 import 'package:catlendar/core/providers/notification_providers.dart';
 import 'package:catlendar/core/providers/session_providers.dart';
 import 'package:catlendar/core/utils/date_utils.dart';
 import 'package:catlendar/core/utils/validators.dart';
-import 'package:catlendar/core/notifications/local_notification_service.dart';
 import 'package:catlendar/features/care/data/datasources/care_record_firestore_data_source.dart';
 import 'package:catlendar/features/care/data/datasources/holiday_api_data_source.dart';
 import 'package:catlendar/features/care/data/datasources/schedule_firestore_data_source.dart';
 import 'package:catlendar/features/care/data/models/care_record.dart';
 import 'package:catlendar/features/care/data/models/holiday.dart';
+import 'package:catlendar/features/care/data/models/reminder_option.dart';
 import 'package:catlendar/features/care/data/models/schedule.dart';
 import 'package:catlendar/features/care/data/repositories/care_record_repository_impl.dart';
 import 'package:catlendar/features/care/data/repositories/schedule_repository_impl.dart';
 import 'package:catlendar/features/care/domain/care_inputs.dart';
+import 'package:catlendar/features/care/domain/reminder_planner.dart';
 import 'package:catlendar/features/care/domain/repositories/care_record_repository.dart';
 import 'package:catlendar/features/care/domain/repositories/schedule_repository.dart';
-import 'package:catlendar/features/care/domain/reminder_planner.dart';
-import 'package:catlendar/features/care/data/models/reminder_option.dart';
 import 'package:catlendar/features/care/presentation/utils/care_labels.dart';
 
 final careRecordRepositoryProvider = Provider<CareRecordRepository>(
@@ -41,13 +41,10 @@ final holidayDataSourceProvider = Provider<HolidayApiDataSource>(
   (ref) => HolidayApiDataSource(ref.watch(httpClientProvider)),
 );
 
-/// Hari libur per tahun. Hasil di-cache oleh Riverpod selama sesi aplikasi (FR-63).
-/// Jika gagal, state error dan kalender tetap menampilkan jadwal (FR-64).
 final holidaysProvider = FutureProvider.family<List<Holiday>, int>(
   (ref, year) => ref.watch(holidayDataSourceProvider).fetchHolidays(year: year),
 );
 
-/// Riwayat perawatan (log) satu kucing.
 final careRecordsByCatProvider =
     StreamProvider.family<List<CareRecord>, String>((ref, catId) {
   final ownerId = ref.watch(currentUserIdProvider);
@@ -57,21 +54,18 @@ final careRecordsByCatProvider =
       .watchRecordsByCat(ownerId: ownerId, catId: catId);
 });
 
-/// Semua riwayat perawatan milik pengguna (Summary dan kalender).
 final careRecordsByOwnerProvider = StreamProvider<List<CareRecord>>((ref) {
   final ownerId = ref.watch(currentUserIdProvider);
   if (ownerId == null) return Stream.value(const <CareRecord>[]);
   return ref.watch(careRecordRepositoryProvider).watchRecordsByOwner(ownerId);
 });
 
-/// Semua jadwal milik pengguna (kalender bulanan dan Summary).
 final schedulesByOwnerProvider = StreamProvider<List<Schedule>>((ref) {
   final ownerId = ref.watch(currentUserIdProvider);
   if (ownerId == null) return Stream.value(const <Schedule>[]);
   return ref.watch(scheduleRepositoryProvider).watchSchedulesByOwner(ownerId);
 });
 
-/// Jadwal satu kucing.
 final schedulesByCatProvider = StreamProvider.family<List<Schedule>, String>((
   ref,
   catId,
@@ -86,16 +80,10 @@ final schedulesByCatProvider = StreamProvider.family<List<Schedule>, String>((
 const String _sessionMessage = 'Sesi login tidak ditemukan. Silakan login ulang.';
 const String _reminderTitle = 'Pengingat perawatan Catlendar';
 
-/// Controller untuk semua operasi tulis pada fitur Care.
-///
-/// Urutan simpan jadwal mengikuti alur 5.5 dan TODO awal:
-/// validasi, batalkan notifikasi lama, tulis SCHEDULE, jadwalkan notifikasi baru,
-/// simpan local_notification_id.
 final class CareActionController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  /// Menyimpan riwayat (layar Fill in grooming details). Null jika berhasil.
   Future<String?> saveGroomingRecords({
     required String catId,
     required List<PastCareInput> inputs,
@@ -129,7 +117,6 @@ final class CareActionController extends AsyncNotifier<void> {
     return _run(() => repo.addRecords(records));
   }
 
-  /// Menyimpan jadwal berikutnya (layar Let's schedule your cat's next grooming session).
   Future<ScheduleSaveResult> saveSchedules({
     required String catId,
     required String catName,
@@ -147,7 +134,6 @@ final class CareActionController extends AsyncNotifier<void> {
     final scheduleRepo = ref.read(scheduleRepositoryProvider);
     final careRepo = ref.read(careRecordRepositoryProvider);
 
-    // Validasi: tidak boleh sebelum hari ini (OI-05) dan tidak sebelum tanggal terakhir (ERD).
     final errors = <String>[];
     for (final input in inputs) {
       final label = careTypeLabel(input.careType, customName: input.customName);
@@ -178,6 +164,7 @@ final class CareActionController extends AsyncNotifier<void> {
           !wantsReminder || await notifications.requestPermission();
 
       var remindersScheduled = 0;
+      final summaryLabels = <String>[];
       for (final input in inputs) {
         final existing = await scheduleRepo.getSchedule(
           ownerId: ownerId,
@@ -186,11 +173,9 @@ final class CareActionController extends AsyncNotifier<void> {
           customName: input.customName,
         );
 
-        // 1. Batalkan notifikasi lama lebih dulu.
         final oldId = existing?.localNotificationId;
         if (oldId != null) await notifications.cancelReminder(oldId);
 
-        // 2. Tulis SCHEDULE (create atau update).
         final at = ReminderPlanner.reminderAt(
           nextDate: input.nextDate,
           option: reminder,
@@ -217,17 +202,25 @@ final class CareActionController extends AsyncNotifier<void> {
           await scheduleRepo.updateSchedule(schedule);
         }
 
-        // 3. Jadwalkan notifikasi baru.
+        final label = careTypeLabel(input.careType, customName: input.customName);
+        summaryLabels.add('$label (${AppDateUtils.formatDate(input.nextDate)})');
+
         if (shouldRemind) {
           final scheduled = await notifications.scheduleReminder(
             localNotificationId: newId!,
             scheduledAt: at,
             title: _reminderTitle,
-            body: '${careTypeLabel(input.careType, customName: input.customName)}'
-                ' untuk $catName pada ${AppDateUtils.formatDate(input.nextDate)}',
+            body: '$label untuk $catName pada ${AppDateUtils.formatDate(input.nextDate)}',
           );
           if (scheduled) remindersScheduled++;
         }
+      }
+
+      if (wantsReminder && permissionOk && summaryLabels.isNotEmpty) {
+        await notifications.showImmediateNotification(
+          title: 'Jadwal perawatan $catName aktif',
+          body: '${summaryLabels.join(', ')} • Pengingat: ${reminderLabel(reminder.value)}',
+        );
       }
 
       state = const AsyncData(null);
@@ -242,7 +235,6 @@ final class CareActionController extends AsyncNotifier<void> {
     }
   }
 
-  /// Menandai jadwal selesai: buat satu CARE_RECORD (tanpa duplikasi) lalu nonaktifkan jadwal.
   Future<String?> completeSchedule(Schedule schedule) => _run(() async {
         if (!schedule.isActive) return;
         final repo = ref.read(careRecordRepositoryProvider);
@@ -270,13 +262,11 @@ final class CareActionController extends AsyncNotifier<void> {
         await _deactivate(schedule, now);
       });
 
-  /// Membatalkan jadwal (is_active = false) dan notifikasinya.
   Future<String?> cancelSchedule(Schedule schedule) => _run(() async {
         if (!schedule.isActive) return;
         await _deactivate(schedule, DateTime.now());
       });
 
-  /// Menghapus dokumen jadwal dan notifikasinya.
   Future<String?> deleteSchedule(Schedule schedule) => _run(() async {
         final notifications = await _notifications();
         final oldId = schedule.localNotificationId;
@@ -303,7 +293,6 @@ final class CareActionController extends AsyncNotifier<void> {
     return service;
   }
 
-  /// Menjalankan aksi tulis dan mengembalikan pesan error (null jika berhasil).
   Future<String?> _run(Future<void> Function() action) async {
     state = const AsyncLoading();
     try {

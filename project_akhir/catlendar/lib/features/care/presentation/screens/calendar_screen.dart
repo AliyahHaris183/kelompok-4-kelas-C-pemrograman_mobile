@@ -4,16 +4,28 @@ import 'package:go_router/go_router.dart';
 
 import 'package:catlendar/app/router/app_routes.dart';
 import 'package:catlendar/core/utils/date_utils.dart';
-import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
-import 'package:catlendar/features/care/presentation/theme/care_theme.dart';
+import 'package:catlendar/features/auth/presentation/providers/auth_providers.dart';
 import 'package:catlendar/features/care/data/models/holiday.dart';
 import 'package:catlendar/features/care/presentation/providers/care_providers.dart';
+import 'package:catlendar/features/care/presentation/theme/care_theme.dart';
 import 'package:catlendar/features/care/presentation/utils/summary_builder.dart';
 import 'package:catlendar/features/care/presentation/widgets/care_summary_list.dart';
+import 'package:catlendar/features/cats/data/models/cat.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
+import 'package:catlendar/shared/widgets/avatar_image.dart';
 
-/// Layar 19: Do you keep everything on track? (kalender bulanan).
+enum _HistoryPeriod {
+  allTime('All Time'),
+  last3Months('Last 3 Months'),
+  last6Months('Last 6 Months'),
+  lastYear('Last 1 Year');
+
+  const _HistoryPeriod(this.label);
+  final String label;
+}
+
+/// Screen 19: Monthly calendar with profile integration, Summary, and filterable Care History.
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key, this.catId});
 
@@ -28,6 +40,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   late DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime? _selected;
+  late String? _activeCatId = widget.catId;
+  _HistoryPeriod _historyPeriod = _HistoryPeriod.allTime;
+
+  @override
+  void didUpdateWidget(covariant CalendarScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.catId != widget.catId) {
+      _activeCatId = widget.catId;
+    }
+  }
 
   void _shiftMonth(int delta) {
     setState(() {
@@ -44,6 +66,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
+  List<SummaryEntry> _filterHistory(List<SummaryEntry> history) {
+    if (_historyPeriod == _HistoryPeriod.allTime) return history;
+    final now = AppDateUtils.dateOnly(DateTime.now());
+    final DateTime cutoff = switch (_historyPeriod) {
+      _HistoryPeriod.allTime => DateTime(1970),
+      _HistoryPeriod.last3Months => DateTime(now.year, now.month - 3, now.day),
+      _HistoryPeriod.last6Months => DateTime(now.year, now.month - 6, now.day),
+      _HistoryPeriod.lastYear => DateTime(now.year - 1, now.month, now.day),
+    };
+    return history.where((e) => !e.date.isBefore(cutoff)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Theme(data: CareTheme.of(context), child: _body(context));
@@ -54,6 +88,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final schedules = ref.watch(schedulesByOwnerProvider);
     final records = ref.watch(careRecordsByOwnerProvider);
     final cats = ref.watch(userCatsProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
     final holidays = ref.watch(holidaysProvider(_month.year));
 
     if (schedules.hasError || records.hasError || cats.hasError) {
@@ -62,7 +97,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
           title: const Text('Calendar'),
         ),
-        body: const Center(child: Text('Kalender belum bisa dimuat.')),
+        body: const Center(child: Text('Unable to load calendar.')),
       );
     }
     final scheduleList = schedules.value;
@@ -79,16 +114,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
 
     final catById = {for (final c in catList) c.catId: c};
-    final catId = widget.catId;
-    final title = catId == null
-        ? 'Do you keep everything on track?'
-        : "${catById[catId]?.name ?? 'Kucing'}'s calendar";
+    final effectiveCatId =
+        (_activeCatId != null && catById.containsKey(_activeCatId)) ? _activeCatId : null;
+    final selectedCat = effectiveCatId == null ? null : catById[effectiveCatId];
 
     final allEntries = buildSummaryEntries(
       schedules: scheduleList,
       records: recordList,
       cats: catList,
-      catId: catId,
+      catId: effectiveCatId,
     );
     final monthEntries = allEntries
         .where((e) => e.date.year == _month.year && e.date.month == _month.month)
@@ -101,11 +135,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       for (final holiday in holidays.value ?? const <Holiday>[])
         AppDateUtils.toIsoDate(holiday.date): holiday,
     };
-    final shown = _selected == null
+
+    final shownSummary = _selected == null
         ? monthEntries
         : monthEntries
             .where((e) => AppDateUtils.isSameDay(e.date, _selected!))
             .toList();
+
+    final allHistoryEntries = allEntries
+        .where((e) => e.kind == SummaryKind.last)
+        .toList()
+        .reversed
+        .toList();
+    final filteredHistory = _filterHistory(allHistoryEntries);
 
     final leading = DateTime(_month.year, _month.month, 1).weekday - 1;
     final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
@@ -114,14 +156,32 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Kembali',
+          tooltip: 'Back',
           icon: const Icon(Icons.arrow_back),
           onPressed: _handleBack,
         ),
-        title: Text(title),
+        title: Text(
+          selectedCat == null ? 'Care Calendar' : "${selectedCat.name}'s Calendar",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Summary',
+            icon: const Icon(Icons.list_alt_rounded),
+            onPressed: () => context.push(
+              AppRoutes.summary.location(
+                queryParameters: effectiveCatId == null
+                    ? null
+                    : {AppRoutes.catIdQuery: effectiveCatId},
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addSchedule(catList),
+        heroTag: 'set_schedule_fab',
+        onPressed: () => _openCatRoute(catList, isHistory: false),
         backgroundColor: CareTheme.ink,
         foregroundColor: Colors.white,
         shape: const StadiumBorder(),
@@ -130,8 +190,83 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
           children: [
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F7F7),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: CareTheme.outline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      AvatarImage(
+                        avatarId: userProfile?.avatarId,
+                        size: 40,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userProfile?.name ?? 'Cat Owner',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              selectedCat == null
+                                  ? 'Showing all cats (${catList.length})'
+                                  : 'Active profile: ${selectedCat.name}',
+                              style: theme.textTheme.bodySmall?.copyWith(color: CareTheme.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _openCatRoute(catList, isHistory: true),
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add History'),
+                      ),
+                    ],
+                  ),
+                  if (catList.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('All'),
+                            selected: effectiveCatId == null,
+                            onSelected: (_) => setState(() => _activeCatId = null),
+                          ),
+                          const SizedBox(width: 8),
+                          for (final cat in catList) ...[
+                            ChoiceChip(
+                              avatar: CatAvatar(
+                                avatarId: cat.avatarId,
+                                catColor: cat.color,
+                                radius: 10,
+                                fallbackName: cat.name,
+                              ),
+                              label: Text(cat.name),
+                              selected: effectiveCatId == cat.catId,
+                              onSelected: (_) => setState(() => _activeCatId = cat.catId),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
             if (holidays.hasError)
               Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -141,13 +276,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
-                  'Data hari libur belum tersedia. Kalender dan jadwal tetap berfungsi.',
+                  'Public holiday data is currently unavailable. Calendar and schedules still work normally.',
                 ),
               ),
             Row(
               children: [
                 IconButton(
-                  tooltip: 'Bulan sebelumnya',
+                  tooltip: 'Previous month',
                   icon: const Icon(Icons.chevron_left),
                   onPressed: () => _shiftMonth(-1),
                 ),
@@ -159,7 +294,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Bulan berikutnya',
+                  tooltip: 'Next month',
                   icon: const Icon(Icons.chevron_right),
                   onPressed: () => _shiftMonth(1),
                 ),
@@ -194,6 +329,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 final date = DateTime(_month.year, _month.month, dayNumber);
                 final iso = AppDateUtils.toIsoDate(date);
                 final dayEntries = byDay[iso] ?? const <SummaryEntry>[];
+                final hasOverdue = dayEntries.any((e) => e.overdue);
                 final isHoliday = holidayByIso.containsKey(iso);
                 final isSelected = _selected != null && AppDateUtils.isSameDay(_selected!, date);
                 final isToday = AppDateUtils.isSameDay(DateTime.now(), date);
@@ -209,22 +345,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outlineVariant,
-                        width: isSelected ? 2 : 1,
+                        color: hasOverdue
+                            ? const Color(0xFFD32F2F)
+                            : (isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outlineVariant),
+                        width: (isSelected || hasOverdue) ? 2 : 1,
                       ),
-                      color: isHoliday
-                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
-                          : null,
+                      color: hasOverdue
+                          ? const Color(0xFFFFEBEE)
+                          : (isHoliday
+                              ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
+                              : null),
                     ),
                     child: Column(
                       children: [
                         Text(
                           '$dayNumber',
                           style: TextStyle(
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                            color: isHoliday ? theme.colorScheme.error : null,
+                            fontWeight: (isToday || hasOverdue) ? FontWeight.bold : FontWeight.normal,
+                            color: hasOverdue
+                                ? const Color(0xFFB71C1C)
+                                : (isHoliday ? theme.colorScheme.error : null),
                             fontSize: 12,
                           ),
                         ),
@@ -252,27 +394,60 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+
+            // 1. Summary
             Row(
               children: [
                 Expanded(
                   child: Text(
                     _selected == null
                         ? 'Summary ${AppDateUtils.formatMonthYear(_month)}'
-                        : 'Aktivitas ${AppDateUtils.formatDate(_selected!)}',
+                        : 'Summary ${AppDateUtils.formatDate(_selected!)}',
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
                 if (_selected != null)
                   TextButton(
                     onPressed: () => setState(() => _selected = null),
-                    child: const Text('Semua'),
+                    child: const Text('All'),
                   ),
               ],
             ),
             CareSummaryList(
-              entries: shown,
-              emptyText: 'Belum ada jadwal atau riwayat.',
+              entries: shownSummary,
+              contextEntries: allEntries,
+              emptyText: 'No scheduled or past activities for this period.',
+            ),
+
+            const Divider(height: 28),
+
+            // 2. Care History (All Time, Last 3 Months, Last 6 Months, Last 1 Year)
+            Text(
+              'Care History',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final period in _HistoryPeriod.values) ...[
+                    ChoiceChip(
+                      label: Text(period.label),
+                      selected: _historyPeriod == period,
+                      onSelected: (_) => setState(() => _historyPeriod = period),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            CareSummaryList(
+              entries: filteredHistory,
+              contextEntries: allEntries,
+              emptyText: 'No care history recorded in ${_historyPeriod.label.toLowerCase()}.',
             ),
           ],
         ),
@@ -280,17 +455,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  void _addSchedule(List<Cat> cats) {
-    final catId = widget.catId;
-    if (catId != null) {
-      context.push(
-        AppRoutes.scheduleSetup.location(pathParameters: {AppRoutes.catIdParam: catId}),
-      );
+  void _openCatRoute(List<Cat> cats, {required bool isHistory}) {
+    final targetCatId = _activeCatId;
+    if (targetCatId != null) {
+      final route = isHistory ? AppRoutes.groomingHistory : AppRoutes.scheduleSetup;
+      context.push(route.location(pathParameters: {AppRoutes.catIdParam: targetCatId}));
       return;
     }
     if (cats.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tambahkan kucing dulu dari Home.')),
+        const SnackBar(content: Text('Please add a cat profile from Home first.')),
       );
       return;
     }
@@ -300,9 +474,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Pilih kucing', style: TextStyle(fontWeight: FontWeight.bold)),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                isHistory ? 'Select a cat to add history' : 'Select a cat to schedule',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             for (final cat in cats)
               ListTile(
@@ -315,9 +492,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 title: Text(cat.name),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
+                  final route =
+                      isHistory ? AppRoutes.groomingHistory : AppRoutes.scheduleSetup;
                   context.push(
-                    AppRoutes.scheduleSetup
-                        .location(pathParameters: {AppRoutes.catIdParam: cat.catId}),
+                    route.location(pathParameters: {AppRoutes.catIdParam: cat.catId}),
                   );
                 },
               ),
