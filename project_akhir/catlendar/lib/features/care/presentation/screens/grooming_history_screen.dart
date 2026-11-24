@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:catlendar/app/router/app_routes.dart';
 import 'package:catlendar/core/utils/date_utils.dart';
 import 'package:catlendar/core/widgets/cat_avatar.dart';
-import 'package:catlendar/app/router/app_routes.dart';
 import 'package:catlendar/features/care/data/models/care_type.dart';
 import 'package:catlendar/features/care/domain/care_inputs.dart';
 import 'package:catlendar/features/care/presentation/providers/care_providers.dart';
-import 'package:catlendar/features/care/presentation/utils/care_labels.dart';
 import 'package:catlendar/features/care/presentation/theme/care_theme.dart';
+import 'package:catlendar/features/care/presentation/utils/care_labels.dart';
 import 'package:catlendar/features/care/presentation/widgets/care_date_field.dart';
 import 'package:catlendar/features/cats/presentation/providers/cat_providers.dart';
 
 /// Layar 17: Fill in your cat's grooming details.
-///
-/// Semua opsional. Setiap tanggal yang diisi menjadi satu baris CARE_RECORD baru
-/// (log, tidak menimpa). Continue menyimpan lalu lanjut ke layar 18.
 class GroomingHistoryScreen extends ConsumerStatefulWidget {
   const GroomingHistoryScreen({super.key, required this.catId});
 
@@ -65,14 +62,17 @@ class _GroomingHistoryScreenState extends ConsumerState<GroomingHistoryScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _continue() async {
-    final name = _customName.text.trim();
-    if (_customDate != null && name.isEmpty) {
-      _snack('Nama custom event wajib diisi.');
-      return;
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.calendar.path);
     }
+  }
 
-    final inputs = <PastCareInput>[
+  List<PastCareInput> _collectInputs() {
+    final name = _customName.text.trim();
+    return [
       for (final type in _standardTypes)
         if (_dates[type] != null)
           PastCareInput(careType: type, performedDate: _dates[type]!),
@@ -83,6 +83,43 @@ class _GroomingHistoryScreenState extends ConsumerState<GroomingHistoryScreen> {
           performedDate: _customDate!,
         ),
     ];
+  }
+
+  Future<void> _saveOnly() async {
+    final name = _customName.text.trim();
+    if (_customDate != null && name.isEmpty) {
+      _snack('Nama custom event wajib diisi.');
+      return;
+    }
+    final inputs = _collectInputs();
+    if (inputs.isEmpty) {
+      _snack('Pilih minimal satu tanggal riwayat.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    final error = await ref
+        .read(careActionControllerProvider.notifier)
+        .saveGroomingRecords(catId: widget.catId, inputs: inputs);
+    if (!mounted) return;
+    setState(() => _saving = false);
+
+    if (error != null) {
+      _snack(error);
+      return;
+    }
+    _snack('${inputs.length} riwayat perawatan tersimpan.');
+    _handleBack();
+  }
+
+  Future<void> _continue() async {
+    final name = _customName.text.trim();
+    if (_customDate != null && name.isEmpty) {
+      _snack('Nama custom event wajib diisi.');
+      return;
+    }
+
+    final inputs = _collectInputs();
 
     setState(() => _saving = true);
     final error = await ref
@@ -112,12 +149,25 @@ class _GroomingHistoryScreenState extends ConsumerState<GroomingHistoryScreen> {
     final cat = ref.watch(catByIdProvider(widget.catId)).value;
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Kembali',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _handleBack,
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
-            Center(child: CatAvatar(avatarId: cat?.avatarId, radius: 40, fallbackName: cat?.name)),
+            Center(
+              child: CatAvatar(
+                avatarId: cat?.avatarId,
+                catColor: cat?.color,
+                radius: 40,
+                fallbackName: cat?.name,
+              ),
+            ),
             const SizedBox(height: 16),
             Text(
               "Fill in your cat's grooming details",
@@ -171,9 +221,9 @@ class _GroomingHistoryScreenState extends ConsumerState<GroomingHistoryScreen> {
               },
               onClear: () => setState(() => _customDate = null),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             FilledButton(
-              onPressed: _saving ? null : _continue,
+              onPressed: _saving ? null : _saveOnly,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               child: _saving
                   ? const SizedBox(
@@ -181,7 +231,13 @@ class _GroomingHistoryScreenState extends ConsumerState<GroomingHistoryScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Continue'),
+                  : const Text('Save History'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _saving ? null : _continue,
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              child: const Text('Save & Continue to Schedule'),
             ),
           ],
         ),
